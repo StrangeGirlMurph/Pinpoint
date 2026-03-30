@@ -1,0 +1,1 @@
+Pinpoint is a free, privacy-preserving and open-source app to map things/points of interest in your surroundings and around the globe. Each entry can have a location, an image, a description and a date plus time. Entries can be grouped into lists and viewed in a list or on a map.

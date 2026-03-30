@@ -1,0 +1,35 @@
+flutter_launcher_icons:
+  image_path: "assets/icon.png"
+
+  android: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#56b38a" # Light green background
+  adaptive_icon_foreground: "assets/icon.png"
+
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#56b38a" # Standard icon gets the light green background
+
+  # iOS 18+ App Icon variants
+  image_path_ios_dark_transparent: "assets/icon.png" # iOS 18 Dark mode
+  image_path_ios_tinted_grayscale: "assets/icon.png" # iOS 18 Tinted mode
+  desaturate_tinted_to_grayscale_ios: true
+
+  web:
+    generate: true
+    image_path: "assets/icon.png"
+    background_color: "#56b38a"
+    theme_color: "#56b38a"
+
+  windows:
+    generate: true
+    image_path: "assets/icon.png"
+    icon_size: 48
+
+  macos:
+    generate: true
+    image_path: "assets/icon.png"
+
+  linux:
+    generate: true
+    image_path: "assets/icon.png"
