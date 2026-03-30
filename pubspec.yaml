@@ -58,6 +58,14 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
+# Uncomment for publishing on F-Droid/gms free Android version
+#fdependency_overrides:
+#f  geolocator_android:
+#f    git:
+#f      url: https://github.com/Zverik/flutter-geolocator.git
+#f      ref: floss
+#f      path: geolocator_android
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
