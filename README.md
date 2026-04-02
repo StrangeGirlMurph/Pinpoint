@@ -16,9 +16,11 @@ You can find all versions under the [lastest release](https://github.com/Strange
 
 A few screenshots of the app. View all screenshots [here](assets/screenshots/).
 
-|                   Map view                   |                     Bottom sheet                     |               Drawer/Pages               |
-| :------------------------------------------: | :--------------------------------------------------: | :--------------------------------------: |
-| ![Map view](assets/screenshots/map-view.png) | ![Bottom sheet](assets/screenshots/bottom-sheet.png) | ![Drawer](assets/screenshots/drawer.png) |
+<div style="display: flex; flex-direction: row; gap: 20px">
+    <img src="assets/screenshots/map-view.png" width="30%" />
+    <img src="assets/screenshots/bottom-sheet.png" width="30%" />
+    <img src="assets/screenshots/drawer.png" width="30%" />
+</div>
 
 ## Use cases and backstory
 
