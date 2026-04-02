@@ -61,10 +61,10 @@ jobs:
           EOF
 
       - name: Build AAB
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --obfuscate --split-debug-info=obfuscation_data
 
       - name: Build APK
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=obfuscation_data
 
       - name: Move normal APKs
         run: |
@@ -78,7 +78,7 @@ jobs:
 
       - name: Build FOSS APKs
         run: |
-          flutter build apk --release --split-per-abi
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=obfuscation_data
           for file in build/app/outputs/flutter-apk/*.apk; do
             mv "$file" "${file/.apk/-foss.apk}"
           done
