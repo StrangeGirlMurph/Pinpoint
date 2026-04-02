@@ -16,6 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
       
+      - name: Setup exact F-Droid path for reproducible builds
+        run: |
+          sudo mkdir -p /home/vagrant/build
+          sudo ln -s ${{ github.workspace }} /home/vagrant/build/org.pinpoint
+
       - name: Cache pub dependencies
         uses: actions/cache@v5
         with:
@@ -61,28 +66,50 @@ jobs:
           EOF
 
       - name: Build AAB
+        working-directory: /home/vagrant/build/org.pinpoint
         run: flutter build appbundle --release --obfuscate --split-debug-info=obfuscation_data
 
       - name: Build APK
+        working-directory: /home/vagrant/build/org.pinpoint
         run: flutter build apk --release --split-per-abi --obfuscate --split-debug-info=obfuscation_data
 
       - name: Move normal APKs
+        working-directory: /home/vagrant/build/org.pinpoint
         run: |
           mkdir -p build/normal-apks
           mv build/app/outputs/flutter-apk/*.apk build/normal-apks/
 
       - name: Install FOSS dependencies
+        working-directory: /home/vagrant/build/org.pinpoint
         run: |
           sed -i -e 's/^#f//' pubspec.yaml
           flutter pub get
 
       - name: Build FOSS APKs
+        working-directory: /home/vagrant/build/org.pinpoint
         run: |
           flutter build apk --release --split-per-abi --obfuscate --split-debug-info=obfuscation_data
           for file in build/app/outputs/flutter-apk/*.apk; do
             mv "$file" "${file/.apk/-foss.apk}"
           done
           mv build/normal-apks/*.apk build/app/outputs/flutter-apk/
+
+      - name: Rename builds
+        working-directory: /home/vagrant/build/org.pinpoint
+        run: |
+          for file in build/app/outputs/bundle/release/*.aab; do
+            if [ -f "$file" ]; then
+              new_name=$(basename "$file" | sed 's/^app-/Pinpoint-/' | sed 's/-release//')
+              mv "$file" "$(dirname "$file")/$new_name"
+            fi
+          done
+          
+          for file in build/app/outputs/flutter-apk/*.apk; do
+            if [ -f "$file" ]; then
+              new_name=$(basename "$file" | sed 's/^app-/Pinpoint-/' | sed 's/-release//')
+              mv "$file" "$(dirname "$file")/$new_name"
+            fi
+          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
