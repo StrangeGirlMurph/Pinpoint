@@ -6,7 +6,7 @@ One day you might even be able to share and collaborate on lists.
 
 ## Downloads
 
-There are two different flavors of the app. There is the default version that uses Googles proprietary Location Manager for an improved location accuracy in the background and a fully FOSS (Free and Open Source) version that uses the native pure GPS location service. 
+There are two different flavors of the app. There is the default version that uses Googles proprietary Location Manager for an improved location accuracy in the background and a fully FOSS (Free and Open Source Software) (or in this case rather: Fully Open Source Software) version that uses the native pure GPS location service. 
 
 Both the App Store (iOS) and Play Store (Android) ship the default version. F-Droid (Android) ships the FOSS version.
 
