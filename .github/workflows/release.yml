@@ -66,6 +66,24 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --split-per-abi
 
+      - name: Move normal APKs
+        run: |
+          mkdir -p build/normal-apks
+          mv build/app/outputs/flutter-apk/*.apk build/normal-apks/
+
+      - name: Install FOSS dependencies
+        run: |
+          sed -i -e 's/^#f//' pubspec.yaml
+          flutter pub get
+
+      - name: Build FOSS APKs
+        run: |
+          flutter build apk --release --split-per-abi
+          for file in build/app/outputs/flutter-apk/*.apk; do
+            mv "$file" "${file/.apk/-foss.apk}"
+          done
+          mv build/normal-apks/*.apk build/app/outputs/flutter-apk/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
