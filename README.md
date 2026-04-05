@@ -40,7 +40,7 @@ Sadly this app isn't accessible to screenreaders. The main feature of the app is
 
 ## Technology
 
-This app is made with [Flutter](https://flutter.dev). See [CONTRIBUTING](CONTRIBUTING.md) for some more details.
+This app is made with [Flutter](https://flutter.dev). The data is stored in a sqlite database. See [CONTRIBUTING](CONTRIBUTING.md) for some more details.
 
 ## License
 
