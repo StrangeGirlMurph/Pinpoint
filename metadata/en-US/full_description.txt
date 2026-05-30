@@ -1,1 +1,3 @@
 Pinpoint is a free, privacy-preserving and open-source app to map things/points of interest in your surroundings and around the globe. Each entry can have a location, an image, a description and a date plus time. Entries can be grouped into lists and viewed in a list or on a map.
+
+The camera permission is used exclusively for taking photos to attach to your locations and the app currently uses OpenStreetMap as its hardcoded map tile provider which is why the app requires internet access.
