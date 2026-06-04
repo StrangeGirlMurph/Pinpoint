@@ -4,13 +4,19 @@ A free and open-source cross-platform but primarily mobile app to map things/poi
 
 One day you might even be able to share and collaborate on lists.
 
-## Downloads
+## Download
 
-There are two different flavors of the app. There is the default version that uses Googles proprietary Location Manager for an improved location accuracy in the background and a fully FOSS (Free and Open Source Software) (or in this case rather: Fully Open Source Software) version that uses the native pure GPS location service. 
+Because Apple doesn't allow me to publish an app to iOS without sending them a copy of my ID and publishing the app over Googles Play Store requires the same this app is only available for install from the [F-Droid store](https://f-droid.org/) (soon!) and directly from the apk file. Both depend on Google keeping Android open which we sadly can't take for granted anymore. Please inform yourself on the matter under: [keepandroidopen.org](https://keepandroidopen.org/)
 
-Both the App Store (iOS) and Play Store (Android) ship the default version. F-Droid (Android) ships the FOSS version.
+Note: There are two different flavors of the app. There is the version that uses Googles proprietary Location Manager for an improved location accuracy in the background and a fully FOSS (Free and Open Source Software) (or in this case rather: Fully Open Source Software) version that uses the native pure GPS location service. 
 
-You can find all versions under the [lastest release](https://github.com/StrangeGirlMurph/Pinpoint/releases/latest)
+### From [F-Droid](https://f-droid.org/en/) (coming soon!)
+
+F-Droid ships the FOSS version of the app.
+
+### From the apk
+
+To manually install the apk find the relevant version from the [lastest release](https://github.com/StrangeGirlMurph/Pinpoint/releases/latest) of the app, download it and then follow the pop ups asking you to allow your browser to install apps if you haven't granted those yet. For a more detailed guide with more infos follow [this](https://www.thecustomdroid.com/how-to-install-apk-on-android/) article for example. There are 6 different apk files. For three different chip types and then for the FOSS (marked with `-foss`) and non-FOSS versions each. The majority of Android phones use an `arm64-v8a` chip so if you don't know your chips architecture it's a good idea to just try that one.  
 
 ## Screenshots
 
