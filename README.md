@@ -14,13 +14,13 @@ Note: There are two different flavors of the app. There is the version that uses
 
 F-Droid ships the FOSS version of the app. You can simply download it there and let f-droid take care of updates and everything.
 
-[<img src="https://f-droid.org/badge/get-it-on.svg" />](https://f-droid.org/en/packages/org.pinpoint/)
+[<img src="https://f-droid.org/badge/get-it-on.svg" width="30%"/>](https://f-droid.org/en/packages/org.pinpoint/)
 
 ### From the apk
 
 To manually install the apk find the relevant version from the [lastest release](https://github.com/StrangeGirlMurph/Pinpoint/releases/latest) of the app, download it and then follow the pop ups asking you to allow your browser to install apps if you haven't granted those yet. For a more detailed guide with more infos follow [this](https://www.thecustomdroid.com/how-to-install-apk-on-android/) article for example. There are 6 different apk files. For three different chip types and then for the FOSS (marked with `-foss`) and non-FOSS versions each. The majority of Android phones use an `arm64-v8a` chip so if you don't know your chips architecture it's a good idea to just try that one.  
 
-[<img src="https://user-images.githubusercontent.com/663460/26973090-f8fdc986-4d14-11e7-995a-e7c5e79ed925.png" />](https://github.com/StrangeGirlMurph/Pinpoint/releases/latest)
+[<img src="https://user-images.githubusercontent.com/663460/26973090-f8fdc986-4d14-11e7-995a-e7c5e79ed925.png" width="30%"/>](https://github.com/StrangeGirlMurph/Pinpoint/releases/latest)
 
 ## Screenshots
 
