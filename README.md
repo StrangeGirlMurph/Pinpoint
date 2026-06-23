@@ -1,6 +1,6 @@
 # Pinpoint - Personal Mapping
 
-A free and open-source cross-platform but primarily mobile app to map things/points of interest in your surroundings and around the globe. It lets you mark different locations on a map and add metadata to each entry in the form of text, an image and a timestamps. You can organize the entries in different lists.
+A free and open-source cross-platform mobile app to map things/points of interest in your surroundings and around the globe. It lets you mark different locations on a map and add metadata to each entry in the form of text, an image and a timestamps. You can organize the entries in different lists.
 
 One day you might even be able to share and collaborate on lists.
 
