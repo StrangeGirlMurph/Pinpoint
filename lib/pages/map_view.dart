@@ -25,6 +25,9 @@ import 'package:pinpoint/widgets/scaffold.dart';
 import 'package:pinpoint/util/list.dart';
 import 'package:pinpoint/widgets/dropdown.dart';
 
+const double _markerSize = 40.0;
+const double _iconPaddingOffset = _markerSize * (2.0 / 24.0);
+
 enum MapTrackingState { none, position, positionAndBearing }
 
 class MapViewPage extends StatefulWidget {
@@ -447,22 +450,25 @@ class _MapViewPageState extends State<MapViewPage> {
                       (e) => DragMarker(
                         key: ValueKey(e.entryId),
                         point: LatLng(e.latitude!, e.longitude!),
-                        size: const Size.square(40),
+                        size: const Size.square(_markerSize),
                         alignment: Alignment.topCenter,
-                        builder: (_, __, ___) => Icon(
-                          Icons.location_on,
-                          size: 40,
-                          color: _selectedList!.listId == -1
-                              ? _lists
-                                  .singleWhere((l) => l.listId == e.listId)
-                                  .color
-                              : _selectedList!.color,
-                          shadows: const [
-                            Shadow(
-                              color: Colors.black,
-                              blurRadius: 3.0,
-                            ),
-                          ],
+                        builder: (_, __, ___) => Transform.translate(
+                          offset: const Offset(0, _iconPaddingOffset),
+                          child: Icon(
+                            Icons.location_on,
+                            size: _markerSize,
+                            color: _selectedList!.listId == -1
+                                ? _lists
+                                    .singleWhere((l) => l.listId == e.listId)
+                                    .color
+                                : _selectedList!.color,
+                            shadows: const [
+                              Shadow(
+                                color: Colors.black,
+                                blurRadius: 3.0,
+                              ),
+                            ],
+                          ),
                         ),
                         useLongPress: true,
                         onTap: (point) => _handleMarkerTap(e),

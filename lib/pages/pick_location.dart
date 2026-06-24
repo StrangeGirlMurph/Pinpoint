@@ -6,6 +6,9 @@ import 'package:pinpoint/widgets/scaffold.dart';
 import 'package:provider/provider.dart';
 import 'package:pinpoint/data/settings.dart';
 
+const double _markerSize = 40.0;
+const double _iconPaddingOffset = _markerSize * (2.0 / 24.0);
+
 class PickLocationPage extends StatefulWidget {
   final LatLng? initialLocation;
   final Color color;
@@ -51,7 +54,7 @@ class _PickLocationPageState extends State<PickLocationPage> {
               initialCenter: initialCenter,
               initialZoom: initialZoom,
               minZoom: 2.5,
-              maxZoom: 18,
+              maxZoom: 20,
               onTap: (_, point) {
                 setState(() {
                   _selectedLocation = point;
@@ -68,19 +71,22 @@ class _PickLocationPageState extends State<PickLocationPage> {
                   markers: [
                     Marker(
                       point: _selectedLocation!,
-                      width: 40,
-                      height: 40,
+                      width: _markerSize,
+                      height: _markerSize,
                       alignment: Alignment.topCenter,
-                      child: Icon(
-                        Icons.location_on,
-                        size: 40,
-                        color: widget.color,
-                        shadows: const [
-                          Shadow(
-                            color: Colors.black,
-                            blurRadius: 3.0,
-                          ),
-                        ],
+                      child: Transform.translate(
+                        offset: const Offset(0, _iconPaddingOffset),
+                        child: Icon(
+                          Icons.location_on,
+                          size: _markerSize,
+                          color: widget.color,
+                          shadows: const [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 3.0,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
