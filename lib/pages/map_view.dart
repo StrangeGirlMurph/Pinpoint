@@ -271,8 +271,8 @@ class _MapViewPageState extends State<MapViewPage> {
 
   Future<void> _handleMarkerDragEnd(Entry entry, LatLng point) async {
     final updatedEntry = entry.copyWith(
-      latitude: drift.Value(point.latitude),
-      longitude: drift.Value(point.longitude),
+      latitude: drift.Value(round(point.latitude)),
+      longitude: drift.Value(round(point.longitude)),
     );
     await _db.updateEntry(updatedEntry);
     if (_selectedList != null) {
