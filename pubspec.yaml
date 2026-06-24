@@ -57,6 +57,7 @@ dependencies:
   file_picker: ^10.3.10
   flutter_localizations:
     sdk: flutter
+  exif: ^3.3.0
 
 # Uncomment for publishing on F-Droid/gms free Android version
 #fdependency_overrides:

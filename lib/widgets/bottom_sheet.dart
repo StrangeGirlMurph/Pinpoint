@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:latlong2/latlong.dart';
+import 'package:pinpoint/util/exif.dart';
 
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
@@ -167,7 +168,108 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
       setState(() {
         _image = image;
       });
+
+      if (!fromCamera) {
+        final imagePath = storage.getImagePath(image);
+        final metadata = await readImageMetadata(imagePath);
+
+        if (metadata.location != null && mounted) {
+          final latLngText = _latLngController.text.trim();
+          final error = _getLatLngValidationError(latLngText);
+          final entryHasLocation = latLngText.isNotEmpty && error == null;
+
+          LatLng? locationToUse;
+          if (entryHasLocation) {
+            locationToUse = await _showLocationConflictDialog(
+              latLngText,
+              metadata.location!,
+            );
+          } else {
+            locationToUse = metadata.location;
+          }
+
+          if (locationToUse != null && mounted) {
+            final text =
+                '${locationToUse.latitude.toStringAsFixed(6)}, ${locationToUse.longitude.toStringAsFixed(6)}';
+            setState(() {
+              _latLngController.text = text;
+              _latLngErrorText = _getLatLngValidationError(text);
+              _isLatLngEmpty = text.trim().isEmpty;
+            });
+          }
+        }
+
+        if (metadata.dateTime != null && mounted) {
+          DateTime? dateToUse;
+          if (_selectedDate != null) {
+            dateToUse = await _showDateTimeConflictDialog(
+              _selectedDate!,
+              metadata.dateTime!,
+            );
+          } else {
+            dateToUse = metadata.dateTime;
+          }
+
+          if (dateToUse != null && mounted) {
+            setState(() {
+              _selectedDate = dateToUse;
+            });
+          }
+        }
+      }
     }
+  }
+
+  Future<LatLng?> _showLocationConflictDialog(
+      String currentText, LatLng imageLocation) {
+    return showDialog<LatLng>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pick Location'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Keep current'),
+              subtitle: Text(currentText),
+              onTap: () => Navigator.of(context).pop(null),
+            ),
+            ListTile(
+              title: const Text('Use image metadata'),
+              subtitle: Text(
+                '${imageLocation.latitude.toStringAsFixed(6)}, ${imageLocation.longitude.toStringAsFixed(6)}',
+              ),
+              onTap: () => Navigator.of(context).pop(imageLocation),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<DateTime?> _showDateTimeConflictDialog(
+      DateTime currentDate, DateTime imageDate) {
+    return showDialog<DateTime>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pick Date & Time'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Keep current'),
+              subtitle: Text(_dateFormatter.format(currentDate)),
+              onTap: () => Navigator.of(context).pop(null),
+            ),
+            ListTile(
+              title: const Text('Use image metadata'),
+              subtitle: Text(_dateFormatter.format(imageDate)),
+              onTap: () => Navigator.of(context).pop(imageDate),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showImageSourceDialog() {
