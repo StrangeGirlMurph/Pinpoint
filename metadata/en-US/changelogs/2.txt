@@ -1,1 +1,3 @@
-- Add support for image metadata usage
+- Add support for image metadata usage.
+- Removed a tiny pin offset of map markers.
+- Added an option to let the app automatically check for updates on startup.

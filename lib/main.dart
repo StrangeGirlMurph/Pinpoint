@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/settings.dart';
+import 'package:pinpoint/util/update.dart';
 import 'package:pinpoint/pages.dart';
 
 void main() async {
@@ -20,12 +21,18 @@ void main() async {
   final appDocDir = await getApplicationDocumentsDirectory();
   final imageStorage = ImageStorage(appDocDir, settings, db);
 
-  final accentColor = Color(0xFF56B38A);
+  Future<bool> updateFuture = Future.value(false);
+  if (settings.get(Settings.checkForUpdates) as bool) {
+    updateFuture = checkForUpdates();
+  }
+
+  final accentColor = const Color(0xFF56B38A);
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: settings),
+        Provider<Future<bool>>.value(value: updateFuture),
         Provider.value(value: db),
         Provider.value(value: imageStorage),
       ],

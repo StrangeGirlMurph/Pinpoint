@@ -58,6 +58,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   exif: ^3.3.0
+  http: ^1.6.0
+  package_info_plus: ^9.0.1
 
 # Uncomment for publishing on F-Droid/gms free Android version
 #fdependency_overrides:

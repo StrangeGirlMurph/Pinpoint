@@ -190,6 +190,15 @@ class SettingsPage extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.only(top: topPadding, bottom: 10),
         children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Text(
+              'General',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.brightness_6),
             title: const Text('Theme'),
@@ -217,7 +226,15 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(),
+          SwitchListTile(
+            secondary: const Icon(Icons.system_update),
+            title: const Text('Updates'),
+            subtitle: const Text('Check for updates on startup'),
+            value: settings.get(Settings.checkForUpdates) as bool,
+            onChanged: (bool value) {
+              settings.set(Settings.checkForUpdates, value);
+            },
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(

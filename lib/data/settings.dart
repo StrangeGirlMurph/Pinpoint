@@ -12,6 +12,7 @@ class Settings extends ChangeNotifier {
   static const String lastMapLongitude = "lastMapLongitude";
   static const String lastMapZoom = "lastMapZoom";
   static const String lastMapRotationLocked = "lastMapRotationLocked";
+  static const String checkForUpdates = "checkForUpdates";
 
   static const defaultSettings = {
     theme: "system",
@@ -20,6 +21,7 @@ class Settings extends ChangeNotifier {
     lastMapLongitude: 13.393738827437122,
     lastMapZoom: 12.0,
     lastMapRotationLocked: false,
+    checkForUpdates: false,
   };
 
   Future<void> init() async {

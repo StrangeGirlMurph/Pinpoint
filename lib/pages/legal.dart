@@ -4,6 +4,7 @@ import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
 import 'package:pinpoint/widgets/headline.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class LegalPage extends StatelessWidget {
   const LegalPage({super.key});
@@ -30,7 +31,7 @@ class LegalPage extends StatelessWidget {
               "This app respects your privacy. All your data, including markers, images, and lists, is stored strictly locally on your device.",
             ),
             const Text(
-              "No personal data is collected, no telemetry is used, and nothing is sent to the developer or any third parties. The internet connection required by this app is used exclusively for fetching map tiles from the OpenStreetMap Foundations servers.",
+              "No personal data is collected, no telemetry is used, and nothing is sent to the developer or any third parties. The internet connection required by this app is used exclusively for fetching map tiles from the OpenStreetMap Foundations servers and checking for app updates if you have enabled that.",
             ),
             Headline("Attributions"),
             Text.rich(
@@ -49,11 +50,13 @@ class LegalPage extends StatelessWidget {
               "This app is built using Flutter and various open-source libraries. You can view all their licenses below.",
             ),
             TextButton.icon(
-              onPressed: () {
+              onPressed: () async {
+                final packageInfo = await PackageInfo.fromPlatform();
+                if (!context.mounted) return;
                 showLicensePage(
                   context: context,
                   applicationName: "Pinpoint",
-                  applicationVersion: "1.0.0",
+                  applicationVersion: packageInfo.version,
                 );
               },
               icon: const Icon(Icons.description),
