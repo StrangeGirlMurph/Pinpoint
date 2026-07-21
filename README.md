@@ -44,6 +44,12 @@ No personal data is collected, no telemetry is used, and nothing is sent to the 
 
 The location permission is used to add entries at your current location and the camera permission is used to add pictures to your entries.
 
+## LLM Usage Disclosure 
+
+During the development of this app I used LLMs as a tool to speed up the development. I meticulously reviewed everything the LLM generated. I didn't pay anything to the providers relying solely on free student offers. By my standards this project isn't slop. 
+
+I hope that helps. I wanted you to be able to decide for yourself if me using LLMs (eventhough I am not financially supporting them and the code quality is the same as if I had written it myself) is a dealbreaker to you.
+
 ## Accessibility 
 
 Sadly this app isn't accessible to screenreaders. The main feature of the app is the map view and I don't know a good way to make that UI accessible.
