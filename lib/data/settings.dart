@@ -6,6 +6,8 @@ class Settings extends ChangeNotifier {
 
   /// Should be: `light`, `dark` or `system`
   static const String theme = "theme";
+  /// Should be a valid route, e.g. `/map` or `/list`
+  static const String startPage = "startPage";
   static const String lastListId = "lastListId";
   static const String lastEntryId = "lastEntryId";
   static const String lastMapLatitude = "lastMapLatitude";
@@ -16,6 +18,7 @@ class Settings extends ChangeNotifier {
 
   static const defaultSettings = {
     theme: "system",
+    startPage: "/map",
     lastListId: 0,
     lastMapLatitude: 52.517848902676384,
     lastMapLongitude: 13.393738827437122,

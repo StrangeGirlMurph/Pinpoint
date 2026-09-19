@@ -51,6 +51,8 @@ void main() async {
               themeMode = ThemeMode.system;
           }
 
+          final startRoute = settings.get(Settings.startPage) as String;
+
           return MaterialApp(
             title: 'Pinpoint',
             debugShowCheckedModeBanner: false,
@@ -102,7 +104,7 @@ void main() async {
                     bodyLarge: const TextStyle(fontSize: 16, height: 1.5),
                   ),
             ),
-            initialRoute: '/map',
+            initialRoute: startRoute,
             routes: {
               for (final page in pages) page.route: (context) => page.page,
             },

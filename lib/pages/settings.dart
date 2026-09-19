@@ -183,6 +183,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<Settings>();
     final currentTheme = settings.get(Settings.theme) as String;
+    final currentStartPage = settings.get(Settings.startPage) as String;
     final topPadding = MediaQuery.of(context).padding.top + appbarHeight;
 
     return DefaultPage(
@@ -202,7 +203,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.brightness_6),
             title: const Text('Theme'),
-            subtitle: const Text('Choose application theme'),
+            subtitle: const Text('Pick a default'),
             trailing: DropdownButton<String>(
               value: currentTheme,
               onChanged: (String? newValue) {
@@ -222,6 +223,29 @@ class SettingsPage extends StatelessWidget {
                 DropdownMenuItem(
                   value: 'dark',
                   child: Text('Dark'),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: const Text('Startup Page'),
+            subtitle: const Text('Choose a homepage'),
+            trailing: DropdownButton<String>(
+              value: currentStartPage,
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  settings.set(Settings.startPage, newValue);
+                }
+              },
+              items: const [
+                DropdownMenuItem(
+                  value: '/map',
+                  child: Text('Map View'),
+                ),
+                DropdownMenuItem(
+                  value: '/list',
+                  child: Text('List View'),
                 ),
               ],
             ),
