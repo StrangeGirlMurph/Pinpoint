@@ -46,9 +46,7 @@ The location permission is used to add entries at your current location and the 
 
 ## LLM Usage Disclosure 
 
-During the development of this app I used LLMs as a tool to speed up the development. I meticulously reviewed everything the LLM generated. I didn't pay anything to the providers relying solely on free student offers. By my standards this project isn't slop. 
-
-I hope that helps. I wanted you to be able to decide for yourself if me using LLMs (eventhough I am not financially supporting them and the code quality is the same as if I had written it myself) is a dealbreaker to you.
+During the development of this app I used LLMs as a tool to speed up the development. I meticulously reviewed everything the LLM generated. I didn't pay anything to the providers relying solely on free student offers. By my standards this project isn't slop but I want you to be able to decide for yourself if me using LLMs (eventhough I am not financially supporting them and the code quality is the same as if I had written it myself) is a dealbreaker to you. Hope that helps :)
 
 ## Accessibility 
 
