@@ -4,4 +4,5 @@
 - Added a setting to choose the startup page.
 - Updated dependencies and build system.
 - Major overhaul of the location service.
+- Added support for custom map tile providers.
 - Some bug fixes :)

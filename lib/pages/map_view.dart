@@ -17,6 +17,7 @@ import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/util/links.dart';
 import 'package:pinpoint/util/location.dart';
 import 'package:pinpoint/util/snackbar.dart';
+import 'package:pinpoint/util/tile_layer.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/drawer.dart';
 import 'package:pinpoint/widgets/bottom_sheet.dart';
@@ -302,6 +303,8 @@ class _MapViewPageState extends State<MapViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<Settings>();
+    final isDefaultOsm = isDefaultOsmProvider(settings);
     final isLocating =
         _locationService.state == LocationServiceState.initializing ||
         _locationService.state == LocationServiceState.searching;
@@ -445,8 +448,8 @@ class _MapViewPageState extends State<MapViewPage> {
                 _settings.get(Settings.lastMapLongitude) as double,
               ),
               initialZoom: _settings.get(Settings.lastMapZoom) as double,
-              minZoom: 2.5,
-              maxZoom: 20,
+              minZoom: 1.5,
+              maxZoom: 22,
               onPositionChanged: (MapCamera position, bool hasGesture) {
                 _saveMapTimer?.cancel();
                 _saveMapTimer = Timer(const Duration(seconds: 1), () {
@@ -468,11 +471,7 @@ class _MapViewPageState extends State<MapViewPage> {
               onLongPress: (tapPosition, point) => _handleMapLongPress(point),
             ),
             children: [
-              TileLayer(
-                // https://operations.osmfoundation.org/policies/tiles/
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'pinpoint',
-              ),
+              buildAppTileLayer(settings),
               CurrentLocationLayer(
                 positionStream: _locationService.positionStream,
                 alignPositionStream: _alignPositionStreamController.stream,
@@ -524,30 +523,7 @@ class _MapViewPageState extends State<MapViewPage> {
             ],
           ),
           // OSM Attribution
-          Positioned(
-            bottom: 0,
-            left: 30,
-            child: Center(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(150),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(4),
-                    topRight: Radius.circular(4),
-                  ),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-                child: const Text(
-                  "© OpenStreetMap",
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.black,
-                    fontWeight: FontWeight.normal,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          if (isDefaultOsm) const OsmAttributionBadge(),
           // App bar
           Positioned(
             top: 0,
@@ -567,8 +543,9 @@ class _MapViewPageState extends State<MapViewPage> {
                   },
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.info_outline),
+              if (isDefaultOsm)
+                IconButton(
+                  icon: const Icon(Icons.info_outline),
                 onPressed: () {
                   showDialog(
                     context: context,

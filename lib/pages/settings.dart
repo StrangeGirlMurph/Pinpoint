@@ -9,6 +9,7 @@ import 'package:pinpoint/data/import.dart';
 import 'package:pinpoint/data/export.dart';
 import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/util/snackbar.dart';
+import 'package:pinpoint/util/tile_layer.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
 
@@ -181,11 +182,31 @@ class SettingsPage extends StatelessWidget {
     }
   }
 
+  Future<void> _showTileProviderDialog(
+      BuildContext context, Settings settings) async {
+    final currentUrl = settings.get(Settings.tileUrlTemplate) as String? ?? '';
+    final currentUserAgent =
+        settings.get(Settings.tileUserAgent) as String? ?? '';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => _TileProviderDialog(
+        initialUrl: currentUrl,
+        initialUserAgent: currentUserAgent,
+        onSave: (url, userAgent) {
+          settings.set(Settings.tileUrlTemplate, url);
+          settings.set(Settings.tileUserAgent, userAgent);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<Settings>();
     final currentTheme = settings.get(Settings.theme) as String;
     final currentStartPage = settings.get(Settings.startPage) as String;
+    final isDefaultOsm = isDefaultOsmProvider(settings);
     final topPadding = MediaQuery.of(context).padding.top + appbarHeight;
 
     return DefaultPage(
@@ -264,6 +285,26 @@ class SettingsPage extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
+              'Map',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.layers_outlined),
+            title: const Text('Tile Provider'),
+            subtitle: Text(
+              isDefaultOsm ? 'OpenStreetMap (Default)' : 'Custom Provider',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showTileProviderDialog(context, settings),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Text(
               'Data & Storage',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -303,6 +344,153 @@ class SettingsPage extends StatelessWidget {
           // Room for future settings
         ],
       ),
+    );
+  }
+}
+
+class _TileProviderDialog extends StatefulWidget {
+  final String initialUrl;
+  final String initialUserAgent;
+  final void Function(String url, String userAgent) onSave;
+
+  const _TileProviderDialog({
+    required this.initialUrl,
+    required this.initialUserAgent,
+    required this.onSave,
+  });
+
+  @override
+  State<_TileProviderDialog> createState() => _TileProviderDialogState();
+}
+
+class _TileProviderDialogState extends State<_TileProviderDialog> {
+  late final TextEditingController _urlController;
+  late final TextEditingController _userAgentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController = TextEditingController(text: widget.initialUrl);
+    _userAgentController = TextEditingController(text: widget.initialUserAgent);
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _userAgentController.dispose();
+    super.dispose();
+  }
+
+  void _resetToDefault() {
+    setState(() {
+      _urlController.text = Settings.defaultTileUrlTemplate;
+      _userAgentController.text = Settings.defaultTileUserAgent;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Tile Provider'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _urlController,
+              decoration: const InputDecoration(
+                labelText: 'URL Template',
+                hintText: Settings.defaultTileUrlTemplate,
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Supported Formats: Standard XYZ raster tiles (PNG, JPG, WebP) with {z}, {x}, {y} placeholders. Vector tiles and WMS services are not supported.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Terms of Service: You are solely responsible for ensuring you comply with all usage policies, terms of service, attribution requirements, and rate limits of your chosen tile provider!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _userAgentController,
+              decoration: const InputDecoration(
+                labelText: 'User-Agent',
+                hintText: Settings.defaultTileUserAgent,
+                border: OutlineInputBorder(),
+              ),
+              autocorrect: false,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'User-Agent: A unique name/identifier that identifies this client in HTTP requests. Many tile servers (including OpenStreetMap) require a valid and specific identifier to prevent abuse and blocks.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        Wrap(
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: _resetToDefault,
+              child: const Text('Reset to Default'),
+            ),
+            TextButton(
+              onPressed: () {
+                final url = _urlController.text.trim();
+                final userAgent = _userAgentController.text.trim();
+                widget.onSave(
+                  url.isEmpty ? Settings.defaultTileUrlTemplate : url,
+                  userAgent.isEmpty ? Settings.defaultTileUserAgent : userAgent,
+                );
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        )
+      ],
     );
   }
 }

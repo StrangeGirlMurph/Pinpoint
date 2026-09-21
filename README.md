@@ -40,7 +40,7 @@ This app is a hobby project of a student from Berlin who has an autistic special
 
 This app respects your privacy. All your data, including markers, images, and lists, is stored strictly locally on your device.
 
-No personal data is collected, no telemetry is used, and nothing is sent to the developer or any third parties. The internet connection required by this app is used exclusively for fetching map tiles from the OpenStreetMap Foundations servers.
+No personal data is collected, no telemetry is used, and nothing is sent to the developer or any third parties. The internet connection required by this app is used exclusively for fetching map tiles from your configured provider (OpenStreetMap by default).
 
 The location permission is used to add entries at your current location and the camera permission is used to add pictures to your entries.
 

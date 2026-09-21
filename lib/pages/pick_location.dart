@@ -5,6 +5,7 @@ import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/scaffold.dart';
 import 'package:provider/provider.dart';
 import 'package:pinpoint/data/settings.dart';
+import 'package:pinpoint/util/tile_layer.dart';
 
 const double _markerSize = 40.0;
 const double _iconPaddingOffset = _markerSize * (2.0 / 24.0);
@@ -34,7 +35,8 @@ class _PickLocationPageState extends State<PickLocationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.read<Settings>();
+    final settings = context.watch<Settings>();
+    final isDefaultOsm = isDefaultOsmProvider(settings);
     final initialCenter = _selectedLocation ??
         LatLng(
           settings.get(Settings.lastMapLatitude) as double,
@@ -53,8 +55,8 @@ class _PickLocationPageState extends State<PickLocationPage> {
                   InteractionOptions(enableMultiFingerGestureRace: true),
               initialCenter: initialCenter,
               initialZoom: initialZoom,
-              minZoom: 2.5,
-              maxZoom: 20,
+              minZoom: 1.5,
+              maxZoom: 22,
               onTap: (_, point) {
                 setState(() {
                   _selectedLocation = point;
@@ -62,10 +64,7 @@ class _PickLocationPageState extends State<PickLocationPage> {
               },
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'pinpoint',
-              ),
+              buildAppTileLayer(settings),
               if (_selectedLocation != null)
                 MarkerLayer(
                   markers: [
@@ -93,6 +92,7 @@ class _PickLocationPageState extends State<PickLocationPage> {
                 ),
             ],
           ),
+          if (isDefaultOsm) const OsmAttributionBadge(),
           BareAppbar(
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -15,6 +15,12 @@ class Settings extends ChangeNotifier {
   static const String lastMapZoom = "lastMapZoom";
   static const String lastMapRotationLocked = "lastMapRotationLocked";
   static const String checkForUpdates = "checkForUpdates";
+  static const String tileUrlTemplate = "tileUrlTemplate";
+  static const String tileUserAgent = "tileUserAgent";
+
+  static const String defaultTileUrlTemplate =
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  static const String defaultTileUserAgent = "pinpoint";
 
   static const defaultSettings = {
     theme: "system",
@@ -25,6 +31,8 @@ class Settings extends ChangeNotifier {
     lastMapZoom: 12.0,
     lastMapRotationLocked: false,
     checkForUpdates: false,
+    tileUrlTemplate: defaultTileUrlTemplate,
+    tileUserAgent: defaultTileUserAgent,
   };
 
   Future<void> init() async {
