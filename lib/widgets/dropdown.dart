@@ -38,10 +38,17 @@ class ListDropdown extends StatelessWidget {
           return DropdownMenuEntry<EntryList>(
             value: list,
             label: list.name,
-            labelWidget: Text(
-              list.name,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
+            labelWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.circle, color: list.color, size: 14),
+                const SizedBox(width: 8),
+                Text(
+                  list.name,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
+              ],
             ),
           );
         }),

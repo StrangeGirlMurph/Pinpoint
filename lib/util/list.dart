@@ -51,3 +51,38 @@ bool canAddEntryToSelectedList(BuildContext context, EntryList? selectedList) {
   }
   return true;
 }
+
+Future<EntryList?> showSelectListDialog(
+  BuildContext context,
+  List<EntryList> lists, {
+  int? currentListId,
+  String? title,
+}) async {
+  if (lists.isEmpty) return null;
+  if (lists.length == 1) return lists.first;
+
+  return showDialog<EntryList>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: title != null ? Text(title) : null,
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: lists
+                .map(
+                  (list) => ListTile(
+                    leading: Icon(Icons.circle, color: list.color),
+                    title: Text(list.name),
+                    selected: list.listId == currentListId,
+                    onTap: () => Navigator.of(context).pop(list),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      );
+    },
+  );
+}

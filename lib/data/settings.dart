@@ -21,6 +21,7 @@ class Settings extends ChangeNotifier {
   static const String tileCacheEnabled = "tileCacheEnabled";
   static const String tileCacheMaxSizeMB = "tileCacheMaxSizeMB";
   static const String tileCacheFreshnessDays = "tileCacheFreshnessDays";
+  static const String quickActionDefaultListId = "quickActionDefaultListId";
 
   static const String defaultTileUrlTemplate =
       "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -39,6 +40,7 @@ class Settings extends ChangeNotifier {
     tileCacheEnabled: true,
     tileCacheMaxSizeMB: 1000,
     tileCacheFreshnessDays: 0,
+    quickActionDefaultListId: -1,
   };
 
   Future<void> init() async {

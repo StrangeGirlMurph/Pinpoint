@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 const double appbarHeight = 72.0;
@@ -50,7 +51,8 @@ class BareAppbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final appBarWidth = screenWidth > 416 ? 400.0 : screenWidth - 16;
+    final appBarWidth =
+        screenWidth > 416 ? 400.0 : math.max(0.0, screenWidth - 16);
 
     return SafeArea(
       bottom: false,

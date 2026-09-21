@@ -13,6 +13,7 @@ import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/pages/pick_location.dart';
 import 'package:pinpoint/util/location.dart';
+import 'package:pinpoint/util/list.dart';
 import 'package:pinpoint/util/snackbar.dart';
 
 class EditBottomSheet extends StatefulWidget {
@@ -413,30 +414,10 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
 
     if (!mounted) return;
 
-    final selectedList = await showDialog<EntryList>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: lists
-                  .map(
-                    (list) => ListTile(
-                      leading: Icon(Icons.circle, color: list.color),
-                      title: Text(list.name),
-                      selected: list.listId == _currentListId,
-                      onTap: () {
-                        Navigator.of(context).pop(list);
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        );
-      },
+    final selectedList = await showSelectListDialog(
+      context,
+      lists,
+      currentListId: _currentListId,
     );
 
     if (selectedList != null && selectedList.listId != _currentListId) {

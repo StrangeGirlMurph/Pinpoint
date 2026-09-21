@@ -307,6 +307,71 @@ class SettingsPage extends StatelessWidget {
               ],
             ),
           ),
+          StreamBuilder<List<EntryList>>(
+            stream: context.read<AppDatabase>().watchLists(),
+            builder: (context, snapshot) {
+              final lists = snapshot.data ?? [];
+              final currentDefaultListId =
+                  settings.get(Settings.quickActionDefaultListId) as int;
+              final listExists =
+                  lists.any((l) => l.listId == currentDefaultListId);
+              final effectiveValue = listExists ? currentDefaultListId : -1;
+
+              if (snapshot.hasData &&
+                  currentDefaultListId != -1 &&
+                  !listExists) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  settings.set(Settings.quickActionDefaultListId, -1);
+                });
+              }
+
+              return ListTile(
+                titleAlignment: ListTileTitleAlignment.top,
+                isThreeLine: true,
+                leading: const Icon(Icons.shortcut_outlined),
+                title: const Text('Quick Action default list'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Target list for app shortcuts'),
+                    const SizedBox(height: 8),
+                    DropdownButton<int>(
+                      value: effectiveValue,
+                      onChanged: (int? newValue) {
+                        if (newValue != null) {
+                          settings.set(
+                              Settings.quickActionDefaultListId, newValue);
+                        }
+                      },
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: -1,
+                          child: Text('None (always ask me)'),
+                        ),
+                        ...lists.map(
+                          (list) => DropdownMenuItem<int>(
+                            value: list.listId,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.circle, color: list.color, size: 14),
+                                const SizedBox(width: 8),
+                                Text(
+                                  list.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           SwitchListTile(
             secondary: const Icon(Icons.system_update),
             title: const Text('Updates'),

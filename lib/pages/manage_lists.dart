@@ -4,6 +4,7 @@ import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
+import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
 
@@ -80,6 +81,14 @@ class _ManageListsPageState extends State<ManageListsPage> {
       final storage = context.read<ImageStorage>();
 
       await db.deleteList(list.listId, storage);
+      if (mounted) {
+        final settings = context.read<Settings>();
+        // Reset quick action default list if it was set to this deleted list
+        if (settings.get(Settings.quickActionDefaultListId) as int ==
+            list.listId) {
+          settings.set(Settings.quickActionDefaultListId, -1);
+        }
+      }
       _loadLists();
     }
   }

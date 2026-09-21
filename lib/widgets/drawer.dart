@@ -30,6 +30,7 @@ class CDrawer extends StatelessWidget {
                       'https://github.com/StrangeGirlMurph/Pinpoint/releases/latest'),
                   mode: LaunchMode.externalApplication);
             } else {
+              Navigator.of(context).pop();
               if (value != selectedIndex) {
                 Navigator.of(context).push(PageRouteBuilder(
                   settings: RouteSettings(name: pages[value].route),
@@ -38,8 +39,6 @@ class CDrawer extends StatelessWidget {
                   transitionDuration: Duration.zero,
                   reverseTransitionDuration: Duration.zero,
                 ));
-              } else {
-                Navigator.of(context).pop();
               }
             }
           },

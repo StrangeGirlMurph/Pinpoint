@@ -24,6 +24,7 @@ import 'package:pinpoint/widgets/bottom_sheet.dart';
 import 'package:pinpoint/widgets/map_buttons.dart';
 import 'package:pinpoint/widgets/scaffold.dart';
 import 'package:pinpoint/util/list.dart';
+import 'package:pinpoint/util/quick_actions.dart';
 import 'package:pinpoint/widgets/dropdown.dart';
 
 const double _markerSize = 40.0;
@@ -53,6 +54,10 @@ class _MapViewPageState extends State<MapViewPage> {
   late final AppDatabase _db;
   late final Settings _settings;
   late final ImageStorage _imageStorage;
+  late final QuickActionsService _quickActionsService;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _dataLoaded = false;
+  bool _isHandlingQuickAction = false;
 
   Timer? _saveMapTimer;
 
@@ -62,8 +67,10 @@ class _MapViewPageState extends State<MapViewPage> {
     _db = context.read<AppDatabase>();
     _settings = context.read<Settings>();
     _imageStorage = context.read<ImageStorage>();
-    _alignPositionStreamController = StreamController<double?>();
-    _alignDirectionStreamController = StreamController<void>();
+    _quickActionsService = context.read<QuickActionsService>();
+    _quickActionsService.addListener(_handleQuickAction);
+    _alignPositionStreamController = StreamController<double?>.broadcast();
+    _alignDirectionStreamController = StreamController<void>.broadcast();
 
     _locationService = LocationService(
       onStateChanged: () {
@@ -89,6 +96,7 @@ class _MapViewPageState extends State<MapViewPage> {
 
   @override
   void dispose() {
+    _quickActionsService.removeListener(_handleQuickAction);
     _saveMapTimer?.cancel();
     _locationService.dispose();
     _alignPositionStreamController.close();
@@ -115,8 +123,89 @@ class _MapViewPageState extends State<MapViewPage> {
         }
       });
       if (_selectedList != null) {
-        _loadEntries(_selectedList!.listId);
+        await _loadEntries(_selectedList!.listId);
       }
+      _dataLoaded = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _handleQuickAction();
+        }
+      });
+    }
+  }
+
+  Future<void> _handleQuickAction() async {
+    if (!_dataLoaded || _isHandlingQuickAction || !mounted) return;
+
+    final action = _quickActionsService.consumePendingAction();
+    if (action == null) return;
+
+    // Ensure the drawer is dismissed if left open from a previous screen or pause.
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      _scaffoldKey.currentState?.closeDrawer();
+    }
+
+    _isHandlingQuickAction = true;
+    try {
+      if (_lists.isEmpty) {
+        showSnackBar(context, 'Please create a list first');
+        return;
+      }
+
+      // Check if a valid default list is configured in Settings.
+      EntryList? targetList;
+      final defaultListId =
+          _settings.get(Settings.quickActionDefaultListId) as int;
+      if (defaultListId != -1) {
+        targetList = _lists.where((l) => l.listId == defaultListId).firstOrNull;
+        if (targetList == null) {
+          // Stale ID (e.g. list was deleted), reset setting to "always ask"
+          _settings.set(Settings.quickActionDefaultListId, -1);
+        }
+      }
+
+      // If no default list is set, prompt user if multiple lists exist, or auto-pick the single list.
+      if (targetList == null) {
+        if (_lists.length == 1) {
+          targetList = _lists.first;
+        } else {
+          targetList = await showSelectListDialog(
+            context,
+            _lists,
+            currentListId:
+                _selectedList?.listId != -1 ? _selectedList?.listId : null,
+            title: 'Select list for new entry',
+          );
+        }
+      }
+
+      if (targetList == null || !mounted) return;
+
+      if (_selectedList?.listId != targetList.listId) {
+        setState(() {
+          _selectedList = targetList;
+        });
+        _settings.set(Settings.lastListId, targetList.listId);
+        await _loadEntries(targetList.listId);
+      }
+
+      if (!mounted) return;
+
+      switch (action) {
+        case QuickActionType.location:
+          await _addEntryAtCurrentLocation();
+          break;
+        case QuickActionType.picture:
+          await _addEntryWithPicture();
+          break;
+        case QuickActionType.blank:
+          await _addEntryWithoutLocation();
+          break;
+      }
+    } catch (e, stack) {
+      debugPrint('Error handling quick action: $e\n$stack');
+    } finally {
+      _isHandlingQuickAction = false;
     }
   }
 
@@ -307,7 +396,7 @@ class _MapViewPageState extends State<MapViewPage> {
     final isDefaultOsm = isDefaultOsmProvider(settings);
     final isLocating =
         _locationService.state == LocationServiceState.initializing ||
-        _locationService.state == LocationServiceState.searching;
+            _locationService.state == LocationServiceState.searching;
 
     IconData locationIcon;
     String locationTooltip;
@@ -343,6 +432,7 @@ class _MapViewPageState extends State<MapViewPage> {
     }
 
     return AnnotatedScaffold(
+      scaffoldKey: _scaffoldKey,
       drawer: CDrawer(),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
@@ -546,46 +636,46 @@ class _MapViewPageState extends State<MapViewPage> {
               if (isDefaultOsm)
                 IconButton(
                   icon: const Icon(Icons.info_outline),
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('OpenStreetMap Attribution'),
-                      content: const Text(
-                        "© OpenStreetMap contributors\nThis app uses the OpenStreetMap tiles kindly provided by the OpenStreetMap Foundation. The maps data is licensed under the Open Database License (ODbL). Their servers run on donations from people like you. Please consider supporting them and please report any errors you may find in the map by following the link below!",
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('OpenStreetMap Attribution'),
+                        content: const Text(
+                          "© OpenStreetMap contributors\nThis app uses the OpenStreetMap tiles kindly provided by the OpenStreetMap Foundation. The maps data is licensed under the Open Database License (ODbL). Their servers run on donations from people like you. Please consider supporting them and please report any errors you may find in the map by following the link below!",
+                        ),
+                        actionsAlignment: MainAxisAlignment.start,
+                        actions: [
+                          Wrap(
+                            children: [
+                              TextButton(
+                                onPressed: () => openURL(context,
+                                    "https://www.openstreetmap.org/copyright"),
+                                child: const Text("See License"),
+                              ),
+                              TextButton(
+                                onPressed: () => openURL(context,
+                                    "https://supporting.openstreetmap.org/"),
+                                child: const Text("Support OSM"),
+                              ),
+                              TextButton(
+                                onPressed: () => openURL(context,
+                                    "https://www.openstreetmap.org/fixthemap"),
+                                child: const Text("Fix the Map"),
+                              ),
+                              TextButton(
+                                child: const Text('Okay!'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ],
+                          )
+                        ],
                       ),
-                      actionsAlignment: MainAxisAlignment.start,
-                      actions: [
-                        Wrap(
-                          children: [
-                            TextButton(
-                              onPressed: () => openURL(context,
-                                  "https://www.openstreetmap.org/copyright"),
-                              child: const Text("See License"),
-                            ),
-                            TextButton(
-                              onPressed: () => openURL(context,
-                                  "https://supporting.openstreetmap.org/"),
-                              child: const Text("Support OSM"),
-                            ),
-                            TextButton(
-                              onPressed: () => openURL(context,
-                                  "https://www.openstreetmap.org/fixthemap"),
-                              child: const Text("Fix the Map"),
-                            ),
-                            TextButton(
-                              child: const Text('Okay!'),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
             ]),
           ),
         ],

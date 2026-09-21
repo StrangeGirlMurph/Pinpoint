@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class AnnotatedScaffold extends StatelessWidget {
+  final GlobalKey<ScaffoldState>? scaffoldKey;
   final Widget body;
   final Widget? drawer;
   final Widget? floatingActionButton;
 
   const AnnotatedScaffold({
     super.key,
+    this.scaffoldKey,
     required this.body,
     this.drawer,
     this.floatingActionButton,
@@ -30,6 +32,7 @@ class AnnotatedScaffold extends StatelessWidget {
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
       child: Scaffold(
+        key: scaffoldKey,
         drawer: drawer,
         floatingActionButton: floatingActionButton,
         body: body,

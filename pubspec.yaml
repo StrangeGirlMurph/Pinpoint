@@ -60,6 +60,7 @@ dependencies:
   exif: ^3.3.0
   http: ^1.6.0
   package_info_plus: ^10.2.1
+  quick_actions: ^1.1.1
 
 # Uncomment for publishing on F-Droid/gms free Android version
 #fdependency_overrides:

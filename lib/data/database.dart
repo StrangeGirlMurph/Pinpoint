@@ -197,6 +197,12 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  Stream<List<EntryList>> watchLists() {
+    return (select(entryLists)
+          ..orderBy([(e) => OrderingTerm(expression: e.order)]))
+        .watch();
+  }
+
   Future<EntryList?> getList(int listId) async {
     return await (select(entryLists)..where((l) => l.listId.equals(listId)))
         .getSingleOrNull();

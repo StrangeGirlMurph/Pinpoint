@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/settings.dart';
+import 'package:pinpoint/util/quick_actions.dart';
 import 'package:pinpoint/util/update.dart';
 import 'package:pinpoint/pages.dart';
 
@@ -21,6 +22,10 @@ void main() async {
   final appDocDir = await getApplicationDocumentsDirectory();
   final imageStorage = ImageStorage(appDocDir, settings, db);
 
+  final navigatorKey = GlobalKey<NavigatorState>();
+  final quickActionsService = QuickActionsService(navigatorKey: navigatorKey);
+  await quickActionsService.init();
+
   Future<bool> updateFuture = Future.value(false);
   if (settings.get(Settings.checkForUpdates) as bool) {
     updateFuture = checkForUpdates();
@@ -32,6 +37,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: settings),
+        ChangeNotifierProvider.value(value: quickActionsService),
         Provider<Future<bool>>.value(value: updateFuture),
         Provider.value(value: db),
         Provider.value(value: imageStorage),
@@ -51,9 +57,12 @@ void main() async {
               themeMode = ThemeMode.system;
           }
 
-          final startRoute = settings.get(Settings.startPage) as String;
+          final startRoute = quickActionsService.pendingAction != null
+              ? '/map'
+              : (settings.get(Settings.startPage) as String);
 
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: 'Pinpoint',
             debugShowCheckedModeBanner: false,
             localizationsDelegates: const [
