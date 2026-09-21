@@ -21,6 +21,7 @@ class EditBottomSheet extends StatefulWidget {
   final VoidCallback? onSaved;
   final VoidCallback? onDeleted;
   final void Function(LatLng location)? onLocationChanged;
+  final bool autoFetchLocation;
 
   const EditBottomSheet({
     super.key,
@@ -28,6 +29,7 @@ class EditBottomSheet extends StatefulWidget {
     this.onSaved,
     this.onDeleted,
     this.onLocationChanged,
+    this.autoFetchLocation = false,
   });
 
   @override
@@ -68,6 +70,14 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
     _selectedDate = widget.entry.date;
     _image = widget.entry.image;
     _currentListId = widget.entry.listId;
+
+    if (widget.autoFetchLocation && lat == null && lng == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _pasteCurrentLocation();
+        }
+      });
+    }
   }
 
   @override
@@ -651,6 +661,7 @@ Future<void> showEntryEditBottomSheet(
   VoidCallback? onSaved,
   VoidCallback? onDeleted,
   void Function(LatLng location)? onLocationChanged,
+  bool autoFetchLocation = false,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -662,6 +673,7 @@ Future<void> showEntryEditBottomSheet(
       onSaved: onSaved,
       onDeleted: onDeleted,
       onLocationChanged: onLocationChanged,
+      autoFetchLocation: autoFetchLocation,
     ),
   );
 }

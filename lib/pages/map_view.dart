@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/settings.dart';
+import 'package:pinpoint/util/exif.dart';
 import 'package:pinpoint/util/links.dart';
 import 'package:pinpoint/util/location.dart';
 import 'package:pinpoint/util/snackbar.dart';
@@ -275,6 +276,11 @@ class _MapViewPageState extends State<MapViewPage> {
   Future<void> _addEntryWithPicture() async {
     if (!mounted || !canAddEntryToSelectedList(context, _selectedList)) return;
 
+    final preCameraLocation = _locationService.freshPosition ??
+        (_locationService.currentPosition != null
+            ? locationFromPosition(_locationService.currentPosition!)
+            : null);
+
     final entryId = await _db.addEntry(
       listId: _selectedList!.listId,
       location: null,
@@ -285,25 +291,26 @@ class _MapViewPageState extends State<MapViewPage> {
 
     if (image != null) {
       final entry = (await _db.getEntry(entryId))!;
-
       if (!mounted) return;
-      final location = _locationService.freshPosition ??
-          await getCurrentLocation(context, showSnackbars: false);
 
-      if (location == null && mounted) {
-        showSnackBar(
-            context, 'No GPS available. Adding picture without location.');
-      }
+      final imagePath = _imageStorage.getImagePath(image);
+      final metadata = await readImageMetadata(imagePath);
+
+      final location = metadata.location ??
+          _locationService.freshPosition ??
+          preCameraLocation;
 
       final roundedLocation = location != null
           ? LatLng(round(location.latitude), round(location.longitude))
           : null;
 
+      final entryDate = metadata.dateTime ?? DateTime.now();
+
       final updatedEntry = entry.copyWith(
         image: drift.Value(image),
         latitude: drift.Value(roundedLocation?.latitude),
         longitude: drift.Value(roundedLocation?.longitude),
-        date: drift.Value(DateTime.now()),
+        date: drift.Value(entryDate),
       );
       await _db.updateEntry(updatedEntry);
 
@@ -314,7 +321,10 @@ class _MapViewPageState extends State<MapViewPage> {
       }
 
       if (!mounted) return;
-      _showBottomSheet(updatedEntry);
+      _showBottomSheet(
+        updatedEntry,
+        autoFetchLocation: roundedLocation == null,
+      );
     } else {
       await _db.deleteEntry(entryId, _imageStorage);
     }
@@ -363,7 +373,7 @@ class _MapViewPageState extends State<MapViewPage> {
     }
   }
 
-  void _showBottomSheet(Entry entry) {
+  void _showBottomSheet(Entry entry, {bool autoFetchLocation = false}) {
     showEntryEditBottomSheet(
       context,
       entry,
@@ -372,6 +382,7 @@ class _MapViewPageState extends State<MapViewPage> {
       onLocationChanged: (location) {
         _focusMapOnLocation(location);
       },
+      autoFetchLocation: autoFetchLocation,
     );
   }
 
