@@ -13,6 +13,7 @@ import 'package:pinpoint/util/tile_cache.dart';
 import 'package:pinpoint/util/tile_layer.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
+import 'package:pinpoint/widgets/list_dot.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -346,7 +347,17 @@ class SettingsPage extends StatelessWidget {
                       items: [
                         const DropdownMenuItem<int>(
                           value: -1,
-                          child: Text('None (always ask me)'),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListColorDot.rainbow(size: 16),
+                              SizedBox(width: 8),
+                              Text(
+                                'None (always ask me)',
+                                style: TextStyle(fontStyle: FontStyle.italic),
+                              ),
+                            ],
+                          ),
                         ),
                         ...lists.map(
                           (list) => DropdownMenuItem<int>(
@@ -354,7 +365,7 @@ class SettingsPage extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.circle, color: list.color, size: 14),
+                                ListColorDot(color: list.color, size: 16),
                                 const SizedBox(width: 8),
                                 Text(
                                   list.name,

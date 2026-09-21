@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/util/snackbar.dart';
+import 'package:pinpoint/widgets/list_dot.dart';
 
 const EntryList everythingList = EntryList(
   listId: -1,
@@ -73,7 +74,7 @@ Future<EntryList?> showSelectListDialog(
             children: lists
                 .map(
                   (list) => ListTile(
-                    leading: Icon(Icons.circle, color: list.color),
+                    leading: ListColorDot(color: list.color, size: 20),
                     title: Text(list.name),
                     selected: list.listId == currentListId,
                     onTap: () => Navigator.of(context).pop(list),

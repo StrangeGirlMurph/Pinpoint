@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/util/list.dart';
+import 'package:pinpoint/widgets/list_dot.dart';
 
 class ListDropdown extends StatelessWidget {
   final EntryList? selectedList;
@@ -18,14 +19,27 @@ class ListDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget? leadingIcon;
+    if (selectedList != null) {
+      leadingIcon = Padding(
+        padding: const EdgeInsets.only(right: 8.0),
+        child: selectedList!.listId == -1
+            ? const ListColorDot.rainbow(size: 24)
+            : ListColorDot(color: selectedList!.color, size: 24),
+      );
+    }
+
     return DropdownMenu<EntryList>(
+      key: ValueKey(selectedList?.listId),
       initialSelection: selectedList,
+      leadingIcon: leadingIcon,
       enabled: lists.isNotEmpty,
       hintText: lists.isEmpty ? 'No lists available' : 'Select a list',
       expandedInsets: EdgeInsets.zero,
       inputDecorationTheme: const InputDecorationTheme(
         border: InputBorder.none,
         isDense: true,
+        prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
       ),
       textStyle: TextStyle(
         fontSize: 20,
@@ -41,7 +55,7 @@ class ListDropdown extends StatelessWidget {
             labelWidget: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.circle, color: list.color, size: 14),
+                ListColorDot(color: list.color, size: 16),
                 const SizedBox(width: 8),
                 Text(
                   list.name,
@@ -56,11 +70,18 @@ class ListDropdown extends StatelessWidget {
           DropdownMenuEntry<EntryList>(
             value: everythingList,
             label: everythingList.name,
-            labelWidget: Text(
-              everythingList.name,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              style: const TextStyle(fontStyle: FontStyle.italic),
+            labelWidget: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ListColorDot.rainbow(size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  everythingList.name,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ],
             ),
           ),
       ],

@@ -22,7 +22,7 @@ class _ListViewPageState extends State<ListViewPage> {
   EntryList? _selectedList;
   List<Entry> _entries = [];
 
-  final _dateFormatter = DateFormat('dd.MM.yyyy HH:mm:ss');
+  final _dateFormatter = DateFormat('HH:mm:ss dd.MM.yyyy');
 
   @override
   void initState() {
@@ -133,27 +133,88 @@ class _ListViewPageState extends State<ListViewPage> {
                           ? _dateFormatter.format(entry.date!)
                           : 'No date';
 
-                      return ListTile(
-                        leading: Icon(
-                          (entry.latitude != null && entry.longitude != null)
-                              ? Icons.location_on
-                              : Icons.location_off,
-                          color: _selectedList?.listId == -1
-                              ? _lists
-                                  .firstWhere((l) => l.listId == entry.listId,
-                                      orElse: () => _lists.first)
-                                  .color
-                              : (_selectedList?.color ?? Colors.red),
-                        ),
+                      final hasLocation =
+                          entry.latitude != null && entry.longitude != null;
+                      final hasImage =
+                          entry.image != null && entry.image!.isNotEmpty;
+                      final hasDescription = entry.description != null &&
+                          entry.description!.trim().isNotEmpty;
+
+                      final listColor = _selectedList?.listId == -1
+                          ? _lists
+                              .firstWhere((l) => l.listId == entry.listId,
+                                  orElse: () => _lists.isNotEmpty
+                                      ? _lists.first
+                                      : everythingList)
+                              .color
+                          : (_selectedList?.color ?? Colors.red);
+
+                      Widget tile = ListTile(
                         title: Text(
-                          entry.description ?? 'No description',
-                          maxLines: 1,
-                          style: TextStyle(overflow: TextOverflow.ellipsis),
+                          hasDescription
+                              ? entry.description!
+                              : 'No description',
+                          maxLines: 2,
+                          style: TextStyle(
+                            overflow: TextOverflow.ellipsis,
+                            fontStyle: hasDescription
+                                ? FontStyle.normal
+                                : FontStyle.italic,
+                            color: hasDescription
+                                ? null
+                                : Theme.of(context).hintColor,
+                          ),
                         ),
-                        subtitle: Text(dateString),
+                        subtitle: Row(
+                          children: [
+                            Transform.translate(
+                              offset: const Offset(0, -0.5),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    hasLocation
+                                        ? Icons.location_on
+                                        : Icons.location_off,
+                                    size: 16,
+                                    color: listColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    hasImage ? Icons.image : Icons.hide_image,
+                                    size: 16,
+                                    color: listColor,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                dateString,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                         onTap: () => _showBottomSheet(entry),
-                        trailing: const Icon(Icons.chevron_right),
                       );
+
+                      if (_selectedList?.listId == -1) {
+                        tile = Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: listColor,
+                                width: 4,
+                              ),
+                            ),
+                          ),
+                          child: tile,
+                        );
+                      }
+
+                      return tile;
                     },
                   ),
           ),

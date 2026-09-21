@@ -7,6 +7,7 @@ import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
+import 'package:pinpoint/widgets/list_dot.dart';
 
 class ManageListsPage extends StatefulWidget {
   const ManageListsPage({super.key});
@@ -197,14 +198,13 @@ class _ManageListsPageState extends State<ManageListsPage> {
                 return ListTile(
                   key: ValueKey(list.listId),
                   leading: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => _editListColor(list),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: ListColorDot(
                         color: list.color,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black12),
+                        size: 24,
                       ),
                     ),
                   ),
@@ -212,10 +212,12 @@ class _ManageListsPageState extends State<ManageListsPage> {
                       ? TextField(
                           controller: _editController,
                           focusNode: _editFocusNode,
+                          style: const TextStyle(
+                            fontSize: 18,
+                          ),
                           decoration: const InputDecoration(
                             isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 4),
+                            contentPadding: EdgeInsets.symmetric(vertical: 4),
                             border: UnderlineInputBorder(),
                           ),
                           onSubmitted: (_) => _saveEditingList(),
@@ -223,9 +225,12 @@ class _ManageListsPageState extends State<ManageListsPage> {
                       : GestureDetector(
                           onTap: () => _startEditing(list),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Text(
                               list.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                              ),
                             ),
                           ),
                         ),
@@ -233,16 +238,16 @@ class _ManageListsPageState extends State<ManageListsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: Colors.grey),
+                        icon: Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () => _deleteList(list),
                         tooltip: 'Delete List',
                       ),
                       const SizedBox(width: 8),
                       ReorderableDragStartListener(
                         index: index,
-                        child:
-                            const Icon(Icons.drag_handle, color: Colors.grey),
+                        child: Icon(Icons.drag_handle,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
