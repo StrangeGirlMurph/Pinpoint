@@ -6,6 +6,7 @@ class Settings extends ChangeNotifier {
 
   /// Should be: `light`, `dark` or `system`
   static const String theme = "theme";
+
   /// Should be a valid route, e.g. `/map` or `/list`
   static const String startPage = "startPage";
   static const String lastListId = "lastListId";
@@ -17,11 +18,13 @@ class Settings extends ChangeNotifier {
   static const String checkForUpdates = "checkForUpdates";
   static const String tileUrlTemplate = "tileUrlTemplate";
   static const String tileUserAgent = "tileUserAgent";
+  static const String tileCacheEnabled = "tileCacheEnabled";
+  static const String tileCacheMaxSizeMB = "tileCacheMaxSizeMB";
+  static const String tileCacheFreshnessDays = "tileCacheFreshnessDays";
 
   static const String defaultTileUrlTemplate =
       "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   static const String defaultTileUserAgent = "pinpoint";
-
   static const defaultSettings = {
     theme: "system",
     startPage: "/map",
@@ -33,6 +36,9 @@ class Settings extends ChangeNotifier {
     checkForUpdates: false,
     tileUrlTemplate: defaultTileUrlTemplate,
     tileUserAgent: defaultTileUserAgent,
+    tileCacheEnabled: true,
+    tileCacheMaxSizeMB: 1000,
+    tileCacheFreshnessDays: 0,
   };
 
   Future<void> init() async {

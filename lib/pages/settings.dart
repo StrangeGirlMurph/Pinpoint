@@ -9,6 +9,7 @@ import 'package:pinpoint/data/import.dart';
 import 'package:pinpoint/data/export.dart';
 import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/util/snackbar.dart';
+import 'package:pinpoint/util/tile_cache.dart';
 import 'package:pinpoint/util/tile_layer.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
@@ -184,9 +185,8 @@ class SettingsPage extends StatelessWidget {
 
   Future<void> _showTileProviderDialog(
       BuildContext context, Settings settings) async {
-    final currentUrl = settings.get(Settings.tileUrlTemplate) as String? ?? '';
-    final currentUserAgent =
-        settings.get(Settings.tileUserAgent) as String? ?? '';
+    final currentUrl = settings.get(Settings.tileUrlTemplate) as String;
+    final currentUserAgent = settings.get(Settings.tileUserAgent) as String;
 
     await showDialog(
       context: context,
@@ -196,9 +196,39 @@ class SettingsPage extends StatelessWidget {
         onSave: (url, userAgent) {
           settings.set(Settings.tileUrlTemplate, url);
           settings.set(Settings.tileUserAgent, userAgent);
+          reconfigureTileCache();
         },
       ),
     );
+  }
+
+  Future<void> _confirmClearCache(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear Map Cache?'),
+        content: const Text(
+          'This will delete all locally cached map tiles. With an internet connection they will be re-downloaded when needed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      await clearTileCache();
+      if (context.mounted) {
+        showSnackBar(context, 'Map tile cache cleared');
+      }
+    }
   }
 
   @override
@@ -207,6 +237,10 @@ class SettingsPage extends StatelessWidget {
     final currentTheme = settings.get(Settings.theme) as String;
     final currentStartPage = settings.get(Settings.startPage) as String;
     final isDefaultOsm = isDefaultOsmProvider(settings);
+    final cacheEnabled = settings.get(Settings.tileCacheEnabled) as bool;
+    final cacheMaxSizeMB = settings.get(Settings.tileCacheMaxSizeMB) as int;
+    final cacheFreshnessDays =
+        settings.get(Settings.tileCacheFreshnessDays) as int;
     final topPadding = MediaQuery.of(context).padding.top + appbarHeight;
 
     return DefaultPage(
@@ -302,6 +336,110 @@ class SettingsPage extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showTileProviderDialog(context, settings),
           ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: isDefaultOsm
+                ? () => showSnackBar(context,
+                    'Tile caching is mandatory for the default OSM tiles')
+                : null,
+            child: IgnorePointer(
+              ignoring: isDefaultOsm,
+              child: SwitchListTile(
+                secondary: const Icon(Icons.cached),
+                title: const Text('Tile Caching'),
+                subtitle: const Text('Highly recommended!'),
+                value: isDefaultOsm ? true : cacheEnabled,
+                onChanged: isDefaultOsm
+                    ? null
+                    : (bool value) {
+                        settings.set(Settings.tileCacheEnabled, value);
+                        reconfigureTileCache();
+                      },
+              ),
+            ),
+          ),
+          if (isDefaultOsm || cacheEnabled) ...[
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: isDefaultOsm
+                  ? () => showSnackBar(context,
+                      'Following the HTTP Headers for tile freshness is mandatory for the default OSM tiles')
+                  : null,
+              child: IgnorePointer(
+                ignoring: isDefaultOsm,
+                child: ListTile(
+                  enabled: !isDefaultOsm,
+                  leading: const Icon(Icons.history),
+                  title: const Text('Tile Freshness'),
+                  subtitle: const Text('Expiry duration for cached tiles'),
+                  trailing: DropdownButton<int>(
+                    value: isDefaultOsm
+                        ? 0
+                        : ([0, 7, 30, 90].contains(cacheFreshnessDays)
+                            ? cacheFreshnessDays
+                            : 0),
+                    onChanged: isDefaultOsm
+                        ? null
+                        : (int? newValue) {
+                            if (newValue != null) {
+                              settings.set(
+                                  Settings.tileCacheFreshnessDays, newValue);
+                              reconfigureTileCache();
+                            }
+                          },
+                    items: const [
+                      DropdownMenuItem(
+                        value: 0,
+                        child: Text('HTTP Headers'),
+                      ),
+                      DropdownMenuItem(
+                        value: 7,
+                        child: Text('7 Days'),
+                      ),
+                      DropdownMenuItem(
+                        value: 30,
+                        child: Text('30 Days'),
+                      ),
+                      DropdownMenuItem(
+                        value: 90,
+                        child: Text('90 Days'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.storage),
+              title: const Text('Max Cache Size'),
+              subtitle: const Text('Oldest tiles are pruned first if exceeded'),
+              trailing: DropdownButton<int>(
+                value: [250, 500, 1000, 2000, 5000, 0].contains(cacheMaxSizeMB)
+                    ? cacheMaxSizeMB
+                    : 1000,
+                onChanged: (int? newValue) {
+                  if (newValue != null) {
+                    settings.set(Settings.tileCacheMaxSizeMB, newValue);
+                    reconfigureTileCache();
+                  }
+                },
+                items: const [
+                  DropdownMenuItem(value: 250, child: Text('250 MB')),
+                  DropdownMenuItem(value: 500, child: Text('500 MB')),
+                  DropdownMenuItem(value: 1000, child: Text('1 GB')),
+                  DropdownMenuItem(value: 2000, child: Text('2 GB')),
+                  DropdownMenuItem(value: 5000, child: Text('5 GB')),
+                  DropdownMenuItem(value: 0, child: Text('Unlimited')),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Clear Tile Cache'),
+              subtitle: const Text('Delete all locale map tiles'),
+              onTap: () => _confirmClearCache(context),
+            ),
+          ],
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
