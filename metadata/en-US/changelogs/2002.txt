@@ -6,4 +6,5 @@
 - Major overhaul of the location service.
 - Added support for custom map tile providers.
 - Added support for map tile caching and caching settings.
+- Fix delay with adding an entry with a picture.
 - Some bug fixes :)
