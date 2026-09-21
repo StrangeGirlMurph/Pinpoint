@@ -115,7 +115,7 @@ class ImageStorage {
 
       final bytes = await sourceFile.readAsBytes();
 
-      final outputPath = await FilePicker.platform.saveFile(
+      final outputPath = await FilePicker.saveFile(
         dialogTitle: 'Save image as',
         fileName: p.basename(fullPath),
         bytes: bytes,
@@ -125,7 +125,7 @@ class ImageStorage {
         return true;
       }
 
-      return outputPath != null && outputPath.isNotEmpty;
+      return outputPath != null;
     } catch (e) {
       debugPrint('Error downloading image: $e');
       return false;

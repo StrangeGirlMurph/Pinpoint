@@ -2,3 +2,6 @@
 - Removed a tiny pin offset of map markers.
 - Added an option to let the app automatically check for updates on startup.
 - Added a setting to choose the startup page.
+- Updated dependencies and build system.
+- Major overhaul of the location service.
+- Some bug fixes :)

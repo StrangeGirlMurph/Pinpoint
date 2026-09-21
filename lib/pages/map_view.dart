@@ -66,7 +66,18 @@ class _MapViewPageState extends State<MapViewPage> {
 
     _locationService = LocationService(
       onStateChanged: () {
-        if (mounted) setState(() {});
+        if (mounted) {
+          if ((_locationService.state == LocationServiceState.serviceDisabled ||
+                  _locationService.state ==
+                      LocationServiceState.permissionDenied) &&
+              _mapTrackingState != MapTrackingState.none) {
+            setState(() {
+              _mapTrackingState = MapTrackingState.none;
+            });
+          } else {
+            setState(() {});
+          }
+        }
       },
     );
 
@@ -160,10 +171,14 @@ class _MapViewPageState extends State<MapViewPage> {
   Future<void> _addEntryAtCurrentLocation() async {
     if (!mounted || !canAddEntryToSelectedList(context, _selectedList)) return;
 
-    final position = await _locationService.getFreshLocation(context);
-    if (position != null) {
-      final location = LatLng(position.latitude, position.longitude);
-      await _createAndShowEntry(location: location);
+    final location =
+        _locationService.freshPosition ?? await getCurrentLocation(context);
+    if (location != null && mounted) {
+      final roundedLocation = LatLng(
+        round(location.latitude),
+        round(location.longitude),
+      );
+      await _createAndShowEntry(location: roundedLocation);
     }
   }
 
@@ -182,29 +197,30 @@ class _MapViewPageState extends State<MapViewPage> {
       final entry = (await _db.getEntry(entryId))!;
 
       if (!mounted) return;
-      final location = await _locationService.getFreshLocation(context,
-          showSnackbars: false);
+      final location = _locationService.freshPosition ??
+          await getCurrentLocation(context, showSnackbars: false);
 
       if (location == null && mounted) {
         showSnackBar(
             context, 'No GPS available. Adding picture without location.');
-        await Future.delayed(
-          const Duration(seconds: 1),
-        );
       }
+
+      final roundedLocation = location != null
+          ? LatLng(round(location.latitude), round(location.longitude))
+          : null;
 
       final updatedEntry = entry.copyWith(
         image: drift.Value(image),
-        latitude: drift.Value(location?.latitude),
-        longitude: drift.Value(location?.longitude),
+        latitude: drift.Value(roundedLocation?.latitude),
+        longitude: drift.Value(roundedLocation?.longitude),
         date: drift.Value(DateTime.now()),
       );
       await _db.updateEntry(updatedEntry);
 
       await _loadEntries(_selectedList!.listId);
 
-      if (location != null) {
-        _focusMapOnLocation(location);
+      if (roundedLocation != null) {
+        _focusMapOnLocation(roundedLocation);
       }
 
       if (!mounted) return;
@@ -217,7 +233,7 @@ class _MapViewPageState extends State<MapViewPage> {
   Future<void> _viewLocation() async {
     if (_locationService.state == LocationServiceState.serviceDisabled ||
         _locationService.state == LocationServiceState.permissionDenied) {
-      await _locationService.getFreshLocation(context);
+      await _locationService.requestPermissionAndEnable(context);
       return;
     }
 
@@ -228,7 +244,8 @@ class _MapViewPageState extends State<MapViewPage> {
     setState(() {
       if (_mapTrackingState == MapTrackingState.none) {
         _mapTrackingState = MapTrackingState.position;
-        _alignPositionStreamController.add(18.0);
+        final targetZoom = math.max(_mapController.camera.zoom, 18.0);
+        _alignPositionStreamController.add(targetZoom);
       } else if (_mapTrackingState == MapTrackingState.position) {
         _mapTrackingState = MapTrackingState.positionAndBearing;
         _alignDirectionStreamController.add(null);
@@ -262,6 +279,9 @@ class _MapViewPageState extends State<MapViewPage> {
       entry,
       onSaved: () => _loadEntries(_selectedList!.listId),
       onDeleted: () => _loadEntries(_selectedList!.listId),
+      onLocationChanged: (location) {
+        _focusMapOnLocation(location);
+      },
     );
   }
 
@@ -282,6 +302,10 @@ class _MapViewPageState extends State<MapViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isLocating =
+        _locationService.state == LocationServiceState.initializing ||
+        _locationService.state == LocationServiceState.searching;
+
     IconData locationIcon;
     String locationTooltip;
     switch (_locationService.state) {
@@ -373,12 +397,31 @@ class _MapViewPageState extends State<MapViewPage> {
             heroTag: 'viewLocation',
             tooltip: locationTooltip,
             onPressed: _viewLocation,
-            child: Icon(
-              locationIcon,
-              fill: _mapTrackingState != MapTrackingState.positionAndBearing
-                  ? 0
-                  : 1,
-            ),
+            child: isLocating
+                ? Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        locationIcon,
+                        size: 18,
+                      ),
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  )
+                : Icon(
+                    locationIcon,
+                    fill:
+                        _mapTrackingState != MapTrackingState.positionAndBearing
+                            ? 0
+                            : 1,
+                  ),
           ),
         ],
       ),

@@ -148,26 +148,21 @@ class _ManageListsPageState extends State<ManageListsPage> {
       final db = context.read<AppDatabase>();
       await db.updateList(list.copyWith(color: Value(color)));
       _loadLists();
-      // To reflect color changes optionally in UI immediately, we call loadLists which triggers rebuild.
     }
   }
 
-  Future<void> _onReorder(int oldIndex, int newIndex) async {
-    if (oldIndex < newIndex) {
-      newIndex -= 1;
-    }
+  Future<void> _onReorderItem(int oldIndex, int newIndex) async {
     if (oldIndex == newIndex) return;
 
     final db = context.read<AppDatabase>();
 
-    // We update UI immediately for snappy response
     setState(() {
       final item = _lists.removeAt(oldIndex);
       _lists.insert(newIndex, item);
     });
 
     await db.reorderLists(oldIndex, newIndex);
-    _loadLists(); // Fetch accurate final data from db just to be in sync.
+    _loadLists();
   }
 
   @override
@@ -187,7 +182,7 @@ class _ManageListsPageState extends State<ManageListsPage> {
               buildDefaultDragHandles: false,
               padding: EdgeInsets.only(top: topPadding, bottom: 10),
               itemCount: _lists.length,
-              onReorder: _onReorder,
+              onReorderItem: _onReorderItem,
               itemBuilder: (context, index) {
                 final list = _lists[index];
                 return ListTile(

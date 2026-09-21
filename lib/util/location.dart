@@ -2,10 +2,261 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:flutter_map_location_marker/flutter_map_location_marker.dart'
+    show LocationMarkerPosition;
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:pinpoint/util/snackbar.dart';
+
+LatLng locationFromPosition(Position position) {
+  return LatLng(position.latitude, position.longitude);
+}
+
+enum LocationResultStatus {
+  success,
+  serviceDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+  timeout,
+  error,
+}
+
+/// Typed result of a location fetch operation, decoupled from UI.
+class LocationResult {
+  final LocationResultStatus status;
+  final LatLng? location;
+  final double? accuracy;
+  final String? errorMessage;
+  final bool isFallback;
+
+  const LocationResult({
+    required this.status,
+    this.location,
+    this.accuracy,
+    this.errorMessage,
+    this.isFallback = false,
+  });
+
+  bool get isSuccess =>
+      status == LocationResultStatus.success && location != null;
+
+  String get userFriendlyMessage {
+    switch (status) {
+      case LocationResultStatus.serviceDisabled:
+        return 'Location services are disabled.';
+      case LocationResultStatus.permissionDenied:
+        return 'Location permissions are denied.';
+      case LocationResultStatus.permissionDeniedForever:
+        return 'Location permissions are permanently denied.';
+      case LocationResultStatus.timeout:
+        return 'Could not determine location in time. Check GPS signal.';
+      case LocationResultStatus.error:
+        return errorMessage ??
+            'Could not determine location. Check GPS signal.';
+      case LocationResultStatus.success:
+        if (accuracy != null && accuracy! > 100.0) {
+          return 'GPS accuracy is low (${accuracy!.toStringAsFixed(0)}m), location may be imprecise.';
+        }
+        return '';
+    }
+  }
+}
+
+/// Pure device location fetcher without any BuildContext dependency.
+///
+/// Handles checking and requesting permissions and verifying whether location
+/// services are enabled. If GPS is weak or times out, it falls back to recent
+/// last known coordinates (< 5 minutes).
+Future<LocationResult> fetchCurrentLocation({
+  Duration timeout = const Duration(seconds: 8),
+}) async {
+  // Check whether location services (GPS) are enabled
+  final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!isServiceEnabled) {
+    return const LocationResult(status: LocationResultStatus.serviceDisabled);
+  }
+
+  // Check and request location permission
+  var permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied ||
+      permission == LocationPermission.unableToDetermine) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      return const LocationResult(
+        status: LocationResultStatus.permissionDenied,
+      );
+    }
+  }
+
+  if (permission == LocationPermission.deniedForever) {
+    return const LocationResult(
+      status: LocationResultStatus.permissionDeniedForever,
+    );
+  }
+
+  if (permission != LocationPermission.always &&
+      permission != LocationPermission.whileInUse) {
+    return const LocationResult(
+      status: LocationResultStatus.permissionDenied,
+    );
+  }
+
+  // Check if OS has a genuinely fresh, accurate last known position (< 15 seconds, < 50m)
+  try {
+    final lastPos = await Geolocator.getLastKnownPosition();
+    if (lastPos != null) {
+      final age = DateTime.now().difference(lastPos.timestamp);
+      if (!age.isNegative && age.inSeconds < 15 && lastPos.accuracy < 50.0) {
+        return LocationResult(
+          status: LocationResultStatus.success,
+          location: locationFromPosition(lastPos),
+          accuracy: lastPos.accuracy,
+        );
+      }
+    }
+  } catch (_) {}
+
+  try {
+    final position = await Geolocator.getCurrentPosition(
+      locationSettings: LocationSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: timeout,
+      ),
+    );
+
+    return LocationResult(
+      status: LocationResultStatus.success,
+      location: locationFromPosition(position),
+      accuracy: position.accuracy,
+    );
+  } catch (e) {
+    if (e is LocationServiceDisabledException) {
+      return const LocationResult(status: LocationResultStatus.serviceDisabled);
+    }
+
+    if (e is PermissionDeniedException) {
+      return const LocationResult(
+        status: LocationResultStatus.permissionDenied,
+      );
+    }
+
+    // Fallback to last known position of the OS if within 5 minutes
+    try {
+      final lastPos = await Geolocator.getLastKnownPosition();
+      if (lastPos != null) {
+        final lastPosAge = DateTime.now().difference(lastPos.timestamp);
+        if (!lastPosAge.isNegative && lastPosAge.inMinutes < 5) {
+          return LocationResult(
+            status: LocationResultStatus.success,
+            location: locationFromPosition(lastPos),
+            accuracy: lastPos.accuracy,
+            isFallback: true,
+          );
+        }
+      }
+    } catch (_) {}
+
+    if (e is TimeoutException) {
+      return const LocationResult(status: LocationResultStatus.timeout);
+    }
+
+    return LocationResult(
+      status: LocationResultStatus.error,
+      errorMessage: e.toString(),
+    );
+  }
+}
+
+/// Fetches the current device location as a one-shot query with contextual SnackBar feedback.
+///
+/// Wraps [fetchCurrentLocation] and presents standard UI notifications.
+Future<LatLng?> getCurrentLocation(
+  BuildContext context, {
+  bool showSnackbars = true,
+  Duration timeout = const Duration(seconds: 8),
+}) async {
+  Timer? loadingSnackTimer;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? loadingSnack;
+
+  if (showSnackbars && context.mounted) {
+    loadingSnackTimer = Timer(const Duration(milliseconds: 600), () {
+      if (context.mounted) {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        messenger?.hideCurrentSnackBar();
+        loadingSnack = messenger?.showSnackBar(
+          SnackBar(
+            content: const Text('Updating current location...'),
+            duration: timeout,
+          ),
+        );
+      }
+    });
+  }
+
+  LocationResult result;
+  try {
+    result = await fetchCurrentLocation(timeout: timeout);
+  } finally {
+    loadingSnackTimer?.cancel();
+    loadingSnack?.close();
+  }
+
+  if (!context.mounted) return result.location;
+
+  if (result.isSuccess) {
+    if (showSnackbars) {
+      if (result.isFallback) {
+        showSnackBar(context, 'Used last known location (GPS signal weak).');
+      } else if (result.accuracy != null && result.accuracy! > 100.0) {
+        showSnackBar(context, result.userFriendlyMessage);
+      }
+    }
+    return result.location;
+  }
+
+  if (showSnackbars) {
+    switch (result.status) {
+      case LocationResultStatus.serviceDisabled:
+        showSnackBar(
+          context,
+          'Location services are disabled.',
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              Geolocator.openLocationSettings().catchError((_) => false);
+            },
+          ),
+        );
+        break;
+      case LocationResultStatus.permissionDenied:
+        showSnackBar(context, 'Location permissions are denied.');
+        break;
+      case LocationResultStatus.permissionDeniedForever:
+        showSnackBar(
+          context,
+          'Location permissions are permanently denied, we cannot request permissions.',
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              Geolocator.openAppSettings().catchError((_) => false);
+            },
+          ),
+        );
+        break;
+      case LocationResultStatus.timeout:
+      case LocationResultStatus.error:
+        showSnackBar(
+          context,
+          'Could not determine location. Check your GPS signal.',
+        );
+        break;
+      case LocationResultStatus.success:
+        break;
+    }
+  }
+
+  return null;
+}
 
 enum LocationServiceState {
   initializing,
@@ -15,14 +266,19 @@ enum LocationServiceState {
   ready,
 }
 
+/// Service dedicated to managing live location streaming and tracking state
+/// for the map view.
 class LocationService with WidgetsBindingObserver {
-  static const Duration _freshLocationTimeout = Duration(seconds: 8);
-
   bool isInitializing = true;
   bool isLocationServiceEnabled = false;
   LocationPermission locationPermission = LocationPermission.denied;
   bool hasLocationFix = false;
   Position? currentPosition;
+
+  bool _isCheckingPermissions = false;
+  bool _isStartingPositionStream = false;
+  bool _isDisposed = false;
+  AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
 
   LocationServiceState get state {
     if (isInitializing) return LocationServiceState.initializing;
@@ -33,6 +289,17 @@ class LocationService with WidgetsBindingObserver {
     }
     if (!hasLocationFix) return LocationServiceState.searching;
     return LocationServiceState.ready;
+  }
+
+  /// Returns the current position as [LatLng] if it has been updated within the last 15 seconds.
+  LatLng? get freshPosition {
+    if (currentPosition != null && hasLocationFix) {
+      final age = DateTime.now().difference(currentPosition!.timestamp);
+      if (!age.isNegative && age.inSeconds < 15) {
+        return locationFromPosition(currentPosition!);
+      }
+    }
+    return null;
   }
 
   StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
@@ -51,63 +318,87 @@ class LocationService with WidgetsBindingObserver {
     _init();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkPermissionsOnResume();
+  void _notifyStateChanged() {
+    if (!_isDisposed) {
+      onStateChanged();
     }
   }
 
+  void _addPositionEvent(LocationMarkerPosition? position) {
+    if (!_isDisposed && !_positionStreamController.isClosed) {
+      _positionStreamController.add(position);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _lifecycleState = state;
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissionsOnResume();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _onAppPaused();
+    }
+  }
+
+  void _onAppPaused() {
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+    hasLocationFix = false;
+  }
+
   Future<void> _checkPermissionsOnResume() async {
-    final newPermission = await Geolocator.checkPermission();
-    final newServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    bool stateChanged = false;
+    if (_isCheckingPermissions || _isDisposed) return;
+    _isCheckingPermissions = true;
+    try {
+      final newPermission = await Geolocator.checkPermission();
+      if (_isDisposed) return;
+      final newServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (_isDisposed) return;
 
-    if (locationPermission != newPermission) {
       locationPermission = newPermission;
-      stateChanged = true;
-    }
-
-    if (isLocationServiceEnabled != newServiceEnabled) {
       isLocationServiceEnabled = newServiceEnabled;
-      stateChanged = true;
-    }
 
-    if (stateChanged) {
       if (isLocationServiceEnabled &&
           (locationPermission == LocationPermission.always ||
               locationPermission == LocationPermission.whileInUse)) {
         if (_positionSubscription == null) {
-          _startPositionStream();
+          await _startPositionStream();
         }
       } else {
         _positionSubscription?.cancel();
         _positionSubscription = null;
         hasLocationFix = false;
         currentPosition = null;
-        _positionStreamController.add(null);
+        _addPositionEvent(null);
       }
-      onStateChanged();
+      _notifyStateChanged();
+    } finally {
+      _isCheckingPermissions = false;
     }
   }
 
   Future<void> _init() async {
-    isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    locationPermission = await Geolocator.checkPermission();
+    _isCheckingPermissions = true;
+    try {
+      isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (_isDisposed) return;
+      locationPermission = await Geolocator.checkPermission();
+      if (_isDisposed) return;
 
-    if (locationPermission == LocationPermission.denied) {
-      locationPermission = await Geolocator.requestPermission();
+      _listenToServiceStatus();
+      if (_lifecycleState == AppLifecycleState.resumed &&
+          isLocationServiceEnabled &&
+          (locationPermission == LocationPermission.always ||
+              locationPermission == LocationPermission.whileInUse)) {
+        await _startPositionStream();
+      }
+
+      isInitializing = false;
+      _notifyStateChanged();
+    } finally {
+      _isCheckingPermissions = false;
     }
-
-    _listenToServiceStatus();
-    if (isLocationServiceEnabled &&
-        (locationPermission == LocationPermission.always ||
-            locationPermission == LocationPermission.whileInUse)) {
-      await _startPositionStream();
-    }
-
-    isInitializing = false;
-    onStateChanged();
   }
 
   void _listenToServiceStatus() {
@@ -119,8 +410,10 @@ class LocationService with WidgetsBindingObserver {
       return;
     }
 
+    _serviceStatusSubscription?.cancel();
     _serviceStatusSubscription =
         Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
+      if (_isDisposed) return;
       final wasEnabled = isLocationServiceEnabled;
       isLocationServiceEnabled = status == ServiceStatus.enabled;
 
@@ -129,28 +422,34 @@ class LocationService with WidgetsBindingObserver {
         currentPosition = null;
         _positionSubscription?.cancel();
         _positionSubscription = null;
-        _positionStreamController.add(null);
+        _addPositionEvent(null);
       } else if (!wasEnabled && isLocationServiceEnabled) {
-        if (locationPermission == LocationPermission.always ||
-            locationPermission == LocationPermission.whileInUse) {
+        if (_lifecycleState == AppLifecycleState.resumed &&
+            (locationPermission == LocationPermission.always ||
+                locationPermission == LocationPermission.whileInUse)) {
           _startPositionStream();
         }
       }
 
-      onStateChanged();
-    });
+      _notifyStateChanged();
+    }, onError: (_) {});
   }
 
   Future<void> _startPositionStream() async {
+    if (_isDisposed || _isStartingPositionStream) return;
+    _isStartingPositionStream = true;
+
     _positionSubscription?.cancel();
+    _positionSubscription = null;
 
     try {
       final lastPos = await Geolocator.getLastKnownPosition();
+      if (_isDisposed) return;
       if (lastPos != null) {
         final age = DateTime.now().difference(lastPos.timestamp);
-        if (age.inMinutes < 5) {
+        if (!age.isNegative && age.inMinutes < 5) {
           currentPosition = lastPos;
-          _positionStreamController.add(LocationMarkerPosition(
+          _addPositionEvent(LocationMarkerPosition(
             latitude: lastPos.latitude,
             longitude: lastPos.longitude,
             accuracy: lastPos.accuracy,
@@ -158,170 +457,131 @@ class LocationService with WidgetsBindingObserver {
 
           if (!hasLocationFix) {
             hasLocationFix = true;
-            onStateChanged();
+            _notifyStateChanged();
           }
         }
       }
     } catch (_) {}
 
-    // Listen to real-time updates
-    _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.best,
-      distanceFilter: 0,
-    )).listen((Position position) {
-      currentPosition = position;
-
-      if (!hasLocationFix) {
-        hasLocationFix = true;
-        onStateChanged();
-      }
-
-      _positionStreamController.add(LocationMarkerPosition(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracy: position.accuracy,
-      ));
-    }, onError: (error) async {
-      if (hasLocationFix) {
-        hasLocationFix = false;
-        onStateChanged();
-      }
-      final newPerm = await Geolocator.checkPermission();
-      if (newPerm != locationPermission) {
-        locationPermission = newPerm;
-        onStateChanged();
-      }
-    }, onDone: () {
-      _positionSubscription = null;
-    });
-  }
-
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _serviceStatusSubscription?.cancel();
-    _positionSubscription?.cancel();
-    _positionStreamController.close();
-  }
-
-  Future<LatLng?> getFreshLocation(BuildContext context,
-      {bool showSnackbars = true}) async {
-    // Check for location service
-    isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!isLocationServiceEnabled) {
-      onStateChanged();
-      if (showSnackbars && context.mounted) {
-        showSnackBar(context, 'Location services are disabled.');
-      }
-      return null;
+    if (_isDisposed) {
+      _isStartingPositionStream = false;
+      return;
     }
 
-    // Check for location permission
+    // Listen to real-time updates
+    _positionSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 0,
+      ),
+    ).listen(
+      (Position position) {
+        if (_isDisposed) return;
+        currentPosition = position;
+
+        if (!hasLocationFix) {
+          hasLocationFix = true;
+          _notifyStateChanged();
+        }
+
+        _addPositionEvent(LocationMarkerPosition(
+          latitude: position.latitude,
+          longitude: position.longitude,
+          accuracy: position.accuracy,
+        ));
+      },
+      onError: (error) async {
+        if (_isDisposed) return;
+        if (hasLocationFix) {
+          hasLocationFix = false;
+          _notifyStateChanged();
+        }
+        final newPerm = await Geolocator.checkPermission();
+        if (_isDisposed) return;
+        if (newPerm != locationPermission) {
+          locationPermission = newPerm;
+          _notifyStateChanged();
+        }
+      },
+      onDone: () {
+        _positionSubscription = null;
+        if (!_isDisposed && hasLocationFix) {
+          hasLocationFix = false;
+          _notifyStateChanged();
+        }
+      },
+    );
+    _isStartingPositionStream = false;
+  }
+
+  /// Requests permission or enables location services when the user clicks
+  /// the map location button while in a disabled or denied state.
+  Future<void> requestPermissionAndEnable(BuildContext context) async {
+    if (_isDisposed) return;
+    isLocationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (_isDisposed) return;
+
+    if (!isLocationServiceEnabled) {
+      _notifyStateChanged();
+      if (context.mounted) {
+        showSnackBar(
+          context,
+          'Location services are disabled.',
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              Geolocator.openLocationSettings().catchError((_) => false);
+            },
+          ),
+        );
+      }
+      return;
+    }
+
     locationPermission = await Geolocator.checkPermission();
-    if (locationPermission == LocationPermission.denied) {
+    if (_isDisposed) return;
+
+    if (locationPermission == LocationPermission.denied ||
+        locationPermission == LocationPermission.unableToDetermine) {
       locationPermission = await Geolocator.requestPermission();
-      onStateChanged();
+      if (_isDisposed) return;
+      _notifyStateChanged();
       if (locationPermission == LocationPermission.denied) {
-        if (showSnackbars && context.mounted) {
+        if (context.mounted) {
           showSnackBar(context, 'Location permissions are denied.');
         }
-        return null;
+        return;
       }
     }
 
     if (locationPermission == LocationPermission.deniedForever) {
-      if (showSnackbars && context.mounted) {
-        showSnackBar(context,
-            'Location permissions are permanently denied, we cannot request permissions.');
-      }
-      return null;
-    }
-
-    // Got permission and service enabled
-    if (_positionSubscription == null) {
-      _startPositionStream();
-      onStateChanged();
-    }
-
-    // Check if current location is fresh and accurate enough
-    if (currentPosition != null) {
-      final age = DateTime.now().difference(currentPosition!.timestamp);
-
-      final isVeryRecent =
-          age.inSeconds < 15 && currentPosition!.accuracy < 50.0;
-      final isStandingStill =
-          age.inMinutes < 2 && currentPosition!.accuracy < 25.0;
-
-      if (isVeryRecent || isStandingStill) {
-        return locationFromPosition(currentPosition!);
-      }
-    }
-
-    // Otherwise dynamically fetch a new one
-    try {
-      ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? loadingSnack;
-      if (showSnackbars && context.mounted) {
-        final messenger = ScaffoldMessenger.of(context);
-        loadingSnack = messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Updating current location...'),
-            duration: _freshLocationTimeout,
+      if (context.mounted) {
+        showSnackBar(
+          context,
+          'Location permissions are permanently denied, we cannot request permissions.',
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () {
+              Geolocator.openAppSettings().catchError((_) => false);
+            },
           ),
         );
       }
-
-      Position position;
-      try {
-        position = await Geolocator.getCurrentPosition(
-          locationSettings:
-              const LocationSettings(timeLimit: _freshLocationTimeout),
-        );
-      } finally {
-        loadingSnack?.close();
-      }
-
-      if (position.accuracy > 100.0 && showSnackbars && context.mounted) {
-        showSnackBar(context,
-            'GPS accuracy is low (${position.accuracy.toStringAsFixed(0)}m), location may be imprecise.');
-      }
-
-      return locationFromPosition(position);
-    } catch (e) {
-      // Fallback to slightly stale tracker position no matter the accuracy
-      if (currentPosition != null) {
-        final age = DateTime.now().difference(currentPosition!.timestamp);
-        if (age.inMinutes < 2) {
-          if (showSnackbars && context.mounted) {
-            showSnackBar(context, 'Used recent location (GPS signal weak).');
-          }
-          return locationFromPosition(currentPosition!);
-        }
-      }
-
-      // Fallback to last known position of the OS
-      final lastPos = await Geolocator.getLastKnownPosition();
-      if (lastPos != null) {
-        final lastPosAge = DateTime.now().difference(lastPos.timestamp);
-
-        if (lastPosAge.inMinutes < 5) {
-          if (showSnackbars && context.mounted) {
-            showSnackBar(
-                context, 'Used last known location (GPS signal weak).');
-          }
-          return locationFromPosition(lastPos);
-        }
-      }
-
-      // Complete Failure
-      if (showSnackbars && context.mounted) {
-        showSnackBar(
-            context, 'Could not determine location. Check your GPS signal.');
-      }
-      return null;
+      return;
     }
+
+    if (_positionSubscription == null) {
+      await _startPositionStream();
+    }
+    _notifyStateChanged();
   }
 
-  LatLng locationFromPosition(Position position) {
-    return LatLng(position.latitude, position.longitude);
+  void dispose() {
+    _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    _serviceStatusSubscription?.cancel();
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _positionStreamController.close();
   }
 }

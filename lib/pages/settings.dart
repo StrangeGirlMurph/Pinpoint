@@ -57,10 +57,12 @@ class SettingsPage extends StatelessWidget {
           : [XFile(result as String)];
 
       if (context.mounted && files.isNotEmpty) {
-        await Share.shareXFiles(
-          files,
-          text: shareText,
-          sharePositionOrigin: _sharePositionOrigin(context),
+        await SharePlus.instance.share(
+          ShareParams(
+            files: files,
+            text: shareText,
+            sharePositionOrigin: _sharePositionOrigin(context),
+          ),
         );
       }
     } catch (e) {
@@ -120,16 +122,16 @@ class SettingsPage extends StatelessWidget {
     bool isLoadingShown = false;
 
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['zip'],
       );
 
-      if (result == null || result.files.single.path == null) {
+      if (result.isEmpty || result.first.path == null) {
         return;
       }
 
-      final String zipPath = result.files.single.path!;
+      final String zipPath = result.first.path!;
 
       if (!context.mounted) return;
       bool? confirm = await showDialog<bool>(

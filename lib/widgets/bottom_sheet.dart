@@ -12,18 +12,21 @@ import 'package:pinpoint/util/exif.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/pages/pick_location.dart';
+import 'package:pinpoint/util/location.dart';
 import 'package:pinpoint/util/snackbar.dart';
 
 class EditBottomSheet extends StatefulWidget {
   final Entry entry;
   final VoidCallback? onSaved;
   final VoidCallback? onDeleted;
+  final void Function(LatLng location)? onLocationChanged;
 
   const EditBottomSheet({
     super.key,
     required this.entry,
     this.onSaved,
     this.onDeleted,
+    this.onLocationChanged,
   });
 
   @override
@@ -41,6 +44,7 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
   bool _isDeleted = false;
   String? _latLngErrorText;
   late bool _isLatLngEmpty;
+  bool _isFetchingLocation = false;
 
   final _dateFormatter = DateFormat('dd.MM.yyyy HH:mm:ss');
 
@@ -75,19 +79,21 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
     super.dispose();
   }
 
-  void _saveEntryImplicitly() {
-    double? parsedLat = widget.entry.latitude;
-    double? parsedLng = widget.entry.longitude;
+  void _saveEntryImplicitly({double? overrideLat, double? overrideLng}) {
+    double? parsedLat = overrideLat ?? widget.entry.latitude;
+    double? parsedLng = overrideLng ?? widget.entry.longitude;
 
-    final latLngText = _latLngController.text.trim();
-    final latLngError = _getLatLngValidationError(latLngText);
-    if (latLngText.isEmpty) {
-      parsedLat = null;
-      parsedLng = null;
-    } else if (latLngError == null) {
-      final parts = latLngText.split(',');
-      parsedLat = double.tryParse(parts[0].trim());
-      parsedLng = double.tryParse(parts[1].trim());
+    if (overrideLat == null && overrideLng == null) {
+      final latLngText = _latLngController.text.trim();
+      final latLngError = _getLatLngValidationError(latLngText);
+      if (latLngText.isEmpty) {
+        parsedLat = null;
+        parsedLng = null;
+      } else if (latLngError == null) {
+        final parts = latLngText.split(',');
+        parsedLat = double.tryParse(parts[0].trim());
+        parsedLng = double.tryParse(parts[1].trim());
+      }
     }
 
     final updatedEntry = widget.entry.copyWith(
@@ -152,6 +158,51 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
       _latLngErrorText = _getLatLngValidationError(text);
       _isLatLngEmpty = text.trim().isEmpty;
     });
+
+    _saveEntryImplicitly(
+      overrideLat: picked.latitude,
+      overrideLng: picked.longitude,
+    );
+    widget.onLocationChanged?.call(picked);
+  }
+
+  Future<void> _pasteCurrentLocation() async {
+    if (_isFetchingLocation) return;
+    setState(() {
+      _isFetchingLocation = true;
+    });
+
+    try {
+      final result = await fetchCurrentLocation();
+      if (!mounted) return;
+
+      if (result.isSuccess && result.location != null) {
+        final location = result.location!;
+        final text =
+            '${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}';
+        setState(() {
+          _latLngController.text = text;
+          _latLngErrorText = null;
+          _isLatLngEmpty = false;
+        });
+
+        _saveEntryImplicitly(
+          overrideLat: location.latitude,
+          overrideLng: location.longitude,
+        );
+        widget.onLocationChanged?.call(location);
+      } else {
+        setState(() {
+          _latLngErrorText = result.userFriendlyMessage;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFetchingLocation = false;
+        });
+      }
+    }
   }
 
   Future<void> _pickImage(bool fromCamera) async {
@@ -196,6 +247,11 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
               _latLngErrorText = _getLatLngValidationError(text);
               _isLatLngEmpty = text.trim().isEmpty;
             });
+            _saveEntryImplicitly(
+              overrideLat: locationToUse.latitude,
+              overrideLng: locationToUse.longitude,
+            );
+            widget.onLocationChanged?.call(locationToUse);
           }
         }
 
@@ -225,7 +281,7 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
     return showDialog<LatLng>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Pick Location'),
+        title: const Text('Pick a Location'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -252,7 +308,7 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
     return showDialog<DateTime>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Pick Date & Time'),
+        title: const Text('Pick a Date & Time'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -516,29 +572,66 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: _latLngController,
-                    onChanged: (value) {
-                      final newError = _getLatLngValidationError(value);
-                      final isEmpty = value.trim().isEmpty;
-                      if (newError != _latLngErrorText ||
-                          isEmpty != _isLatLngEmpty) {
-                        setState(() {
-                          _latLngErrorText = newError;
-                          _isLatLngEmpty = isEmpty;
-                        });
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Coordinates',
-                      border: const OutlineInputBorder(),
-                      hintText: 'e.g. 52.5200, 13.4050',
-                      errorText: _latLngErrorText,
-                      suffixIcon: IconButton(
-                        onPressed: _pickLocationOnMap,
-                        icon: const Icon(Icons.map),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _latLngController,
+                          onChanged: (value) {
+                            final newError = _getLatLngValidationError(value);
+                            final isEmpty = value.trim().isEmpty;
+                            if (newError != _latLngErrorText ||
+                                isEmpty != _isLatLngEmpty) {
+                              setState(() {
+                                _latLngErrorText = newError;
+                                _isLatLngEmpty = isEmpty;
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Coordinates',
+                            border: const OutlineInputBorder(),
+                            hintText: 'e.g. 52.5200, 13.4050',
+                            errorText: _latLngErrorText,
+                          ),
+                        ),
                       ),
-                    ),
+                      Builder(
+                        builder: (context) {
+                          final iconColor =
+                              Theme.of(context).colorScheme.onSurfaceVariant;
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Pick on map',
+                                color: iconColor,
+                                onPressed: _pickLocationOnMap,
+                                icon: const Icon(Icons.map),
+                              ),
+                              IconButton(
+                                tooltip: 'Use current location',
+                                color: iconColor,
+                                onPressed: _isFetchingLocation
+                                    ? null
+                                    : _pasteCurrentLocation,
+                                icon: _isFetchingLocation
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: iconColor,
+                                        ),
+                                      )
+                                    : const Icon(Icons.my_location),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -576,6 +669,7 @@ Future<void> showEntryEditBottomSheet(
   Entry entry, {
   VoidCallback? onSaved,
   VoidCallback? onDeleted,
+  void Function(LatLng location)? onLocationChanged,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -586,6 +680,7 @@ Future<void> showEntryEditBottomSheet(
       entry: entry,
       onSaved: onSaved,
       onDeleted: onDeleted,
+      onLocationChanged: onLocationChanged,
     ),
   );
 }

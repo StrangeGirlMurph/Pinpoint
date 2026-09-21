@@ -9,7 +9,7 @@ This project is open to contributions! Feel free to open issues and/or create pu
 
 ## Releasing a New Version
 
-- Changelog: Add a new file in `metadata/en-GB/changelogs/` named `<build_number>.txt` containing a short bulleted list of your changes. (Max 500 characters). This will automatically be imported by F-Droid.
+- Changelog: Add a new file in `metadata/en-GB/changelogs/` named `<versionCode>.txt` (versionCode = buildNumber + 2000) containing a short bulleted list of your changes. (Max 500 characters). This will automatically be imported by F-Droid.
 - Version: Update `version:` in the `pubspec.yaml`. Change the version number and increment the build number after the `+` sign. This is required by App Stores to recognize it as a newer build.
 - Commit and Push: `git commit -am "Prepare release vx.y.z" && git push`
 - Tag and Release: `git tag vx.y.z && git push origin vx.y.z`
