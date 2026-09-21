@@ -31,7 +31,7 @@ class LegalPage extends StatelessWidget {
               "This app respects your privacy. All your data, including markers, images, and lists, is stored strictly locally on your device.",
             ),
             const Text(
-              "No personal data is collected, no telemetry is used, and nothing is sent to the developer or any third parties. The internet connection required by this app is used exclusively for fetching map tiles from your configured provider (OpenStreetMap by default) and checking for app updates if you have enabled that.",
+              "No personal data is collected, no telemetry is used, and nothing is sent to the developer or any third parties. The internet connection required by this app is used exclusively for fetching map tiles from your configured provider (OpenStreetMap by default) and checking for app updates if you have that enabled.",
             ),
             Headline("Attributions"),
             Text.rich(
