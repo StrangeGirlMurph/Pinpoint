@@ -15,6 +15,7 @@ import 'package:pinpoint/pages/pick_location.dart';
 import 'package:pinpoint/util/location.dart';
 import 'package:pinpoint/util/list.dart';
 import 'package:pinpoint/util/snackbar.dart';
+import 'package:share_plus/share_plus.dart';
 
 class EditBottomSheet extends StatefulWidget {
   final Entry entry;
@@ -48,8 +49,10 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
   String? _latLngErrorText;
   late bool _isLatLngEmpty;
   bool _isFetchingLocation = false;
+  final GlobalKey _shareButtonKey = GlobalKey();
 
-  final _dateFormatter = DateFormat('dd.MM.yyyy HH:mm:ss');
+  final _dateFormatter = DateFormat('HH:mm:ss dd.MM.yyyy');
+  final _shareDateFormatter = DateFormat("HH:mm:ss 'on the' dd.MM.yyyy");
 
   @override
   void initState() {
@@ -202,11 +205,10 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
           overrideLng: location.longitude,
         );
         widget.onLocationChanged?.call(location);
-      } else {
-        setState(() {
-          _latLngErrorText = result.userFriendlyMessage;
-        });
       }
+
+      showLocationResultFeedback(context, result,
+          position: SnackBarPosition.top);
     } finally {
       if (mounted) {
         setState(() {
@@ -218,20 +220,20 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
 
   Future<void> _pickImage(bool fromCamera) async {
     final storage = context.read<ImageStorage>();
-    final image = fromCamera
-        ? await storage.takePhoto(widget.entry.entryId)
-        : await storage.pickMedia(widget.entry.entryId);
+    try {
+      final image = fromCamera
+          ? await storage.takePhoto(widget.entry.entryId)
+          : await storage.pickMedia(widget.entry.entryId);
 
-    if (image != null) {
-      // If we had a previous image, delete it from storage to avoid orphan files
-      if (_image != null && _image != image) {
-        await storage.deleteImage(_image!, widget.entry.entryId);
-      }
-      setState(() {
-        _image = image;
-      });
+      if (image != null) {
+        // If we had a previous image, delete it from storage to avoid orphan files
+        if (_image != null && _image != image) {
+          await storage.deleteImage(_image!, widget.entry.entryId);
+        }
+        setState(() {
+          _image = image;
+        });
 
-      if (!fromCamera) {
         final imagePath = storage.getImagePath(image);
         final metadata = await readImageMetadata(imagePath);
 
@@ -283,6 +285,14 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
             });
           }
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        showSnackBar(
+          context,
+          'Failed to pick image: $e',
+          position: SnackBarPosition.top,
+        );
       }
     }
   }
@@ -369,14 +379,27 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
   }
 
   void _openImageInGallery() async {
-    OpenFile.open(_imageStorage.getImagePath(_image!));
+    final result = await OpenFile.open(_imageStorage.getImagePath(_image!));
+    if (result.type != ResultType.done && mounted) {
+      showSnackBar(
+        context,
+        result.message.isNotEmpty
+            ? result.message
+            : 'Could not open image in gallery.',
+        position: SnackBarPosition.top,
+      );
+    }
   }
 
   Future<void> _downloadImage() async {
     final success = await _imageStorage.downloadImage(_image!);
 
-    if (!success && mounted) {
-      showSnackBar(context, 'Image download failed.');
+    if (success == false && mounted) {
+      showSnackBar(
+        context,
+        'Image download failed.',
+        position: SnackBarPosition.top,
+      );
     }
   }
 
@@ -431,7 +454,97 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
     );
 
     if (selectedList != null && selectedList.listId != _currentListId) {
-      _currentListId = selectedList.listId;
+      setState(() {
+        _currentListId = selectedList.listId;
+      });
+      _saveEntryImplicitly();
+    }
+  }
+
+  String? _buildShareText() {
+    final description = _descriptionController.text.trim();
+    final hasDesc = description.isNotEmpty;
+    final dateTime = _selectedDate != null
+        ? _shareDateFormatter.format(_selectedDate!)
+        : null;
+    final hasDateTime = dateTime != null;
+
+    String? coordinates;
+    final latLngText = _latLngController.text.trim();
+    if (latLngText.isNotEmpty &&
+        _getLatLngValidationError(latLngText) == null) {
+      final parts = latLngText.split(',');
+      coordinates = '${parts[0].trim()}, ${parts[1].trim()}';
+    }
+    final hasCoords = coordinates != null;
+
+    if (hasDesc && hasDateTime && hasCoords) {
+      return '$description at $dateTime and $coordinates';
+    } else if (hasDesc && hasCoords) {
+      return '$description at $coordinates';
+    } else if (hasDesc && hasDateTime) {
+      return '$description at $dateTime';
+    } else if (hasDateTime && hasCoords) {
+      return '$dateTime at $coordinates';
+    } else if (hasCoords) {
+      return coordinates;
+    } else if (hasDesc) {
+      return description;
+    } else if (hasDateTime) {
+      return dateTime;
+    }
+    return null;
+  }
+
+  Rect? _sharePositionOrigin() {
+    final box =
+        _shareButtonKey.currentContext?.findRenderObject() as RenderBox? ??
+            context.findRenderObject() as RenderBox?;
+    if (box == null) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Future<void> _shareEntry() async {
+    _saveEntryImplicitly();
+
+    final shareText = _buildShareText();
+    List<XFile>? files;
+
+    if (_image != null && _image!.isNotEmpty) {
+      final imagePath = _imageStorage.getImagePath(_image!);
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        files = [XFile(imagePath)];
+      }
+    }
+
+    if (shareText == null && (files == null || files.isEmpty)) {
+      if (mounted) {
+        showSnackBar(
+          context,
+          'Nothing to share.',
+          position: SnackBarPosition.top,
+        );
+      }
+      return;
+    }
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          files: (files != null && files.isNotEmpty) ? files : null,
+          text: shareText,
+          sharePositionOrigin: _sharePositionOrigin(),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        showSnackBar(
+          context,
+          'Failed to share: $e',
+          position: SnackBarPosition.top,
+        );
+      }
     }
   }
 
@@ -477,23 +590,6 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                     children: [
                       if (_image != null) ...[
                         TextButton.icon(
-                          onPressed: () {
-                            if (!kIsWeb &&
-                                (Platform.isAndroid || Platform.isIOS)) {
-                              _showImageSourceDialog();
-                            } else {
-                              _pickImage(false);
-                            }
-                          },
-                          icon: const Icon(Icons.image),
-                          label: const Text('Change'),
-                        ),
-                        TextButton.icon(
-                          onPressed: _downloadImage,
-                          icon: const Icon(Icons.download),
-                          label: const Text('Download'),
-                        ),
-                        TextButton.icon(
                           onPressed: () async {
                             final storage = context.read<ImageStorage>();
                             await storage.deleteImage(
@@ -504,6 +600,23 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                           },
                           icon: const Icon(Icons.delete),
                           label: const Text("Remove"),
+                        ),
+                        TextButton.icon(
+                          onPressed: _downloadImage,
+                          icon: const Icon(Icons.download),
+                          label: const Text('Download'),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            if (!kIsWeb &&
+                                (Platform.isAndroid || Platform.isIOS)) {
+                              _showImageSourceDialog();
+                            } else {
+                              _pickImage(false);
+                            }
+                          },
+                          icon: const Icon(Icons.image),
+                          label: const Text('Change'),
                         ),
                       ] else ...[
                         TextButton.icon(
@@ -543,16 +656,60 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                       decoration: InputDecoration(
                         labelText: 'Date & Time',
                         border: const OutlineInputBorder(),
-                        suffixIcon: _selectedDate != null
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
+                        suffixIconConstraints:
+                            const BoxConstraints(minWidth: 0, minHeight: 0),
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.only(right: 4.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 40,
+                                  height: 40,
+                                ),
+                                style: IconButton.styleFrom(
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                tooltip: 'Use current date & time',
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                                 onPressed: () {
                                   setState(() {
-                                    _selectedDate = null;
+                                    _selectedDate = DateTime.now();
                                   });
                                 },
-                              )
-                            : null,
+                                icon: const Icon(Icons.today),
+                              ),
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 40,
+                                  height: 40,
+                                ),
+                                style: IconButton.styleFrom(
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                tooltip: "Clear date & time",
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                onPressed: _selectedDate != null
+                                    ? () {
+                                        setState(() {
+                                          _selectedDate = null;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.clear),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       child: Text(
                         _selectedDate != null
@@ -563,90 +720,118 @@ class _EditBottomSheetState extends State<EditBottomSheet> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _latLngController,
-                          onChanged: (value) {
-                            final newError = _getLatLngValidationError(value);
-                            final isEmpty = value.trim().isEmpty;
-                            if (newError != _latLngErrorText ||
-                                isEmpty != _isLatLngEmpty) {
-                              setState(() {
-                                _latLngErrorText = newError;
-                                _isLatLngEmpty = isEmpty;
-                              });
-                            }
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'Coordinates',
-                            border: const OutlineInputBorder(),
-                            hintText: 'e.g. 52.5200, 13.4050',
-                            errorText: _latLngErrorText,
-                          ),
+                  TextField(
+                    controller: _latLngController,
+                    onChanged: (value) {
+                      final newError = _getLatLngValidationError(value);
+                      final isEmpty = value.trim().isEmpty;
+                      if (newError != _latLngErrorText ||
+                          isEmpty != _isLatLngEmpty) {
+                        setState(() {
+                          _latLngErrorText = newError;
+                          _isLatLngEmpty = isEmpty;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Coordinates',
+                      border: const OutlineInputBorder(),
+                      hintText: 'e.g. 52.5200, 13.4050',
+                      errorText: _latLngErrorText,
+                      suffixIconConstraints:
+                          const BoxConstraints(minWidth: 0, minHeight: 0),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.only(right: 4.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 40,
+                                height: 40,
+                              ),
+                              style: IconButton.styleFrom(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              tooltip: 'Pick on map',
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              onPressed: _pickLocationOnMap,
+                              icon: const Icon(Icons.map),
+                            ),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(
+                                width: 40,
+                                height: 40,
+                              ),
+                              style: IconButton.styleFrom(
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              tooltip: 'Use current location',
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                              onPressed: _isFetchingLocation
+                                  ? null
+                                  : _pasteCurrentLocation,
+                              icon: _isFetchingLocation
+                                  ? SizedBox.square(
+                                      dimension: 24,
+                                      child: Center(
+                                        child: SizedBox.square(
+                                          dimension: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(Icons.my_location),
+                            ),
+                          ],
                         ),
                       ),
-                      Builder(
-                        builder: (context) {
-                          final iconColor =
-                              Theme.of(context).colorScheme.onSurfaceVariant;
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: 'Pick on map',
-                                color: iconColor,
-                                onPressed: _pickLocationOnMap,
-                                icon: const Icon(Icons.map),
-                              ),
-                              IconButton(
-                                tooltip: 'Use current location',
-                                color: iconColor,
-                                onPressed: _isFetchingLocation
-                                    ? null
-                                    : _pasteCurrentLocation,
-                                icon: _isFetchingLocation
-                                    ? SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: iconColor,
-                                        ),
-                                      )
-                                    : const Icon(Icons.my_location),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton.icon(
-                          onPressed: _deleteEntry,
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          label: const Text('Delete',
-                              style: TextStyle(color: Colors.red)),
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      IconButton(
+                        tooltip: "Delete the entry",
+                        onPressed: _deleteEntry,
+                        icon: const Icon(
+                          Icons.delete,
+                          color: Colors.red,
+                          size: 18,
                         ),
-                        TextButton.icon(
-                          onPressed: _moveEntry,
-                          icon: const Icon(Icons.format_list_bulleted),
-                          label: const Text('Change list'),
-                        ),
-                        TextButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          icon: const Icon(Icons.save),
-                          label: const Text('Close'),
-                        ),
-                      ]),
+                      ),
+                      TextButton.icon(
+                        onPressed: _moveEntry,
+                        icon: const Icon(Icons.format_list_bulleted),
+                        label: const Text('Change list'),
+                      ),
+                      TextButton.icon(
+                        key: _shareButtonKey,
+                        onPressed: _shareEntry,
+                        icon: const Icon(Icons.share),
+                        label: const Text('Share'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Close'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

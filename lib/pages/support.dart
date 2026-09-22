@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:pinpoint/util/links.dart';
 
 class SupportPage extends StatelessWidget {
   const SupportPage({super.key});
@@ -50,7 +50,7 @@ class SupportPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             TextButton.icon(
-              onPressed: () => launchUrl(Uri.parse("https://ko-fi.com/murph")),
+              onPressed: () => openURL(context, "https://ko-fi.com/murph"),
               icon: const Icon(Icons.cake, size: 28),
               label: const Text("Support me on Ko-fi"),
             ),

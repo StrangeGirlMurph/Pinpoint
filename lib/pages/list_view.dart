@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:pinpoint/data/database.dart';
+import 'package:pinpoint/data/export.dart';
+import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/drawer.dart';
 import 'package:pinpoint/widgets/bottom_sheet.dart';
 import 'package:pinpoint/widgets/scaffold.dart';
 import 'package:pinpoint/util/list.dart';
+import 'package:pinpoint/util/snackbar.dart';
 import 'package:pinpoint/widgets/dropdown.dart';
 
 class ListViewPage extends StatefulWidget {
@@ -103,6 +106,35 @@ class _ListViewPageState extends State<ListViewPage> {
     );
   }
 
+  Future<void> _shareCurrentList(BuildContext context) async {
+    if (_selectedList == null) {
+      showSnackBar(context, 'Please select a list first');
+      return;
+    }
+
+    if (_selectedList!.listId == -1) {
+      Navigator.of(context).pushNamed('/settings');
+      showSnackBar(
+        context,
+        'You can export everything in the Data & Storage section below',
+      );
+      return;
+    }
+
+    final db = context.read<AppDatabase>();
+    final storage = context.read<ImageStorage>();
+    await handleExport(
+      context,
+      exportAction: () => Exporter.exportList(
+        db: db,
+        storage: storage,
+        list: _selectedList!,
+      ),
+      shareText: 'Pinpoint List: ${_selectedList!.name}',
+      errorMessage: 'Failed to share list',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top + appbarHeight;
@@ -131,7 +163,7 @@ class _ListViewPageState extends State<ListViewPage> {
                       // Format the date DD.MM.YYYY HH:MM:SS
                       final dateString = entry.date != null
                           ? _dateFormatter.format(entry.date!)
-                          : 'No date';
+                          : 'No date & time';
 
                       final hasLocation =
                           entry.latitude != null && entry.longitude != null;
@@ -238,6 +270,13 @@ class _ListViewPageState extends State<ListViewPage> {
                   },
                 ),
               ),
+              Builder(
+                builder: (buttonContext) => IconButton(
+                  tooltip: "Share the list",
+                  onPressed: () => _shareCurrentList(buttonContext),
+                  icon: const Icon(Icons.share_outlined),
+                ),
+              )
             ]),
           ),
         ],

@@ -105,7 +105,7 @@ class ImageStorage {
     }
   }
 
-  Future<bool> downloadImage(String image) async {
+  Future<bool?> downloadImage(String image) async {
     try {
       final fullPath = getImagePath(image);
       final sourceFile = File(fullPath);
@@ -125,7 +125,7 @@ class ImageStorage {
         return true;
       }
 
-      return outputPath != null;
+      return outputPath != null ? true : null;
     } catch (e) {
       debugPrint('Error downloading image: $e');
       return false;

@@ -3,7 +3,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
 import 'package:pinpoint/widgets/headline.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:pinpoint/util/links.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -57,26 +57,26 @@ class HelpPage extends StatelessWidget {
             Wrap(
               children: [
                 TextButton.icon(
-                  onPressed: () => launchUrl(Uri.parse(
-                      "https://github.com/StrangeGirlMurph/Urban-Mapping/issues")),
+                  onPressed: () => openURL(context,
+                      "https://github.com/StrangeGirlMurph/Urban-Mapping/issues"),
                   icon: const Icon(Icons.bug_report_outlined),
                   label: const Text("GitHub Issues"),
                 ),
                 TextButton.icon(
                   onPressed: () =>
-                      launchUrl(Uri.parse("mailto:work@murphy.science")),
+                      openURL(context, "mailto:work@murphy.science"),
                   icon: const Icon(Icons.email_outlined),
                   label: const Text("E-Mail (work@murphy.science)"),
                 ),
                 TextButton.icon(
-                  onPressed: () => launchUrl(Uri.parse(
-                      "https://matrix.to/#/@strangegirlmurph:matrix.org")),
+                  onPressed: () => openURL(
+                      context, "https://matrix.to/#/@strangegirlmurph:matrix.org"),
                   icon: const Icon(Icons.chat_bubble_outline),
                   label: const Text("Matrix (@strangegirlmurph)"),
                 ),
                 TextButton.icon(
-                  onPressed: () => launchUrl(
-                      Uri.parse("https://mastodon.social/@StrangeGirlMurph")),
+                  onPressed: () => openURL(
+                      context, "https://mastodon.social/@StrangeGirlMurph"),
                   icon: const Icon(Symbols.communities),
                   label: const Text("Mastodon (@StrangeGirlMurph)"),
                 ),

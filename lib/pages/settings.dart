@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/import.dart';
@@ -18,69 +16,9 @@ import 'package:pinpoint/widgets/list_dot.dart';
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
-  Rect? _sharePositionOrigin(BuildContext context) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return null;
-    return box.localToGlobal(Offset.zero) & box.size;
-  }
-
-  Future<void> _handleExport(
-    BuildContext context, {
-    required Future<dynamic> Function() exportAction,
-    required String shareText,
-    required String errorMessage,
-  }) async {
-    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
-        snackbarController;
-    try {
-      if (context.mounted) {
-        snackbarController = ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Exporting... Please be patient!'),
-            duration: Duration(minutes: 20),
-          ),
-        );
-      }
-
-      final result = await exportAction();
-
-      if (snackbarController != null) {
-        snackbarController.close();
-      }
-
-      if (result == null) {
-        if (context.mounted) {
-          showSnackBar(context, 'Nothing to export.');
-        }
-        return;
-      }
-
-      final files = result is List<String>
-          ? result.map((path) => XFile(path)).toList()
-          : [XFile(result as String)];
-
-      if (context.mounted && files.isNotEmpty) {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: files,
-            text: shareText,
-            sharePositionOrigin: _sharePositionOrigin(context),
-          ),
-        );
-      }
-    } catch (e) {
-      if (snackbarController != null) {
-        snackbarController.close();
-      }
-      if (context.mounted) {
-        showSnackBar(context, '$errorMessage: $e');
-      }
-    }
-  }
-
   Future<void> _exportDatabase(BuildContext context) async {
     final db = context.read<AppDatabase>();
-    await _handleExport(
+    await handleExport(
       context,
       exportAction: () => Exporter.exportDatabase(db),
       shareText: 'Pinpoint Database Backup',
@@ -90,7 +28,7 @@ class SettingsPage extends StatelessWidget {
 
   Future<void> _exportHumanReadableDatabase(BuildContext context) async {
     final db = context.read<AppDatabase>();
-    await _handleExport(
+    await handleExport(
       context,
       exportAction: () => Exporter.exportHumanReadableDatabase(db),
       shareText: 'Pinpoint Database CSV Export',
@@ -100,7 +38,7 @@ class SettingsPage extends StatelessWidget {
 
   Future<void> _exportImages(BuildContext context) async {
     final storage = context.read<ImageStorage>();
-    await _handleExport(
+    await handleExport(
       context,
       exportAction: () => Exporter.exportImages(storage),
       shareText: 'Pinpoint Images Backup',
@@ -111,7 +49,7 @@ class SettingsPage extends StatelessWidget {
   Future<void> _exportFullBackup(BuildContext context) async {
     final db = context.read<AppDatabase>();
     final storage = context.read<ImageStorage>();
-    await _handleExport(
+    await handleExport(
       context,
       exportAction: () => Exporter.exportFullBackup(db, storage),
       shareText: 'Pinpoint Full Backup',
@@ -119,70 +57,8 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Future<void> _importFullBackup(BuildContext context) async {
-    final db = context.read<AppDatabase>();
-    final storage = context.read<ImageStorage>();
-    bool isLoadingShown = false;
-
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['zip'],
-      );
-
-      if (result.isEmpty || result.first.path == null) {
-        return;
-      }
-
-      final String zipPath = result.first.path!;
-
-      if (!context.mounted) return;
-      bool? confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Import Backup'),
-          content: const Text(
-              'This will merge lists and entries from the backup with your current data. '
-              'Exact duplicates will be skipped. Do you want to proceed?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Import'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirm != true) return;
-
-      if (!context.mounted) return;
-      isLoadingShown = true;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const PopScope(
-          canPop: false,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
-
-      await Importer.importFullBackupFromZip(zipPath, db, storage);
-
-      if (context.mounted) {
-        if (isLoadingShown) Navigator.of(context).pop(); // Dismiss loading
-        showSnackBar(context, 'Import completed successfully.');
-      }
-    } catch (e) {
-      if (context.mounted) {
-        if (isLoadingShown) Navigator.of(context).pop();
-        showSnackBar(context, 'Failed to import backup: $e');
-      }
-    }
-  }
+  Future<void> _importFullBackup(BuildContext context) =>
+      handleImportFullBackup(context);
 
   Future<void> _showTileProviderDialog(
       BuildContext context, Settings settings) async {
@@ -534,7 +410,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Symbols.table),
             title: const Text('Export Human-readable Database'),
-            subtitle: const Text('Export your database as csv files'),
+            subtitle: const Text('Export your database as two csv files'),
             onTap: () => _exportHumanReadableDatabase(context),
           ),
           ListTile(
@@ -546,7 +422,7 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.upload),
             title: const Text('Export Full Backup'),
-            subtitle: const Text('Export database and images together'),
+            subtitle: const Text('Export your sqlite db and images together'),
             onTap: () => _exportFullBackup(context),
           ),
           ListTile(

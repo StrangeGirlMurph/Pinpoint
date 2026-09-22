@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pinpoint/widgets/appbar.dart';
 import 'package:pinpoint/widgets/default_page.dart';
 import 'package:pinpoint/widgets/headline.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:pinpoint/util/links.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class LegalPage extends StatelessWidget {
@@ -40,8 +40,8 @@ class LegalPage extends StatelessWidget {
                 style: const TextStyle(color: Colors.blue),
                 recognizer: TapGestureRecognizer()
                   ..onTap = () {
-                    launchUrl(Uri.parse(
-                        "https://www.flaticon.com/free-icon/earth_10420181"));
+                    openURL(context,
+                        "https://www.flaticon.com/free-icon/earth_10420181");
                   },
               ),
             ),

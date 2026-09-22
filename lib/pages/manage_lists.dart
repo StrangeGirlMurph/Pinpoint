@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart';
 import 'package:pinpoint/data/database.dart';
+import 'package:pinpoint/data/export.dart';
 import 'package:pinpoint/data/images.dart';
 import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/widgets/appbar.dart';
@@ -92,6 +93,21 @@ class _ManageListsPageState extends State<ManageListsPage> {
       }
       _loadLists();
     }
+  }
+
+  Future<void> _shareList(BuildContext context, EntryList list) async {
+    final db = context.read<AppDatabase>();
+    final storage = context.read<ImageStorage>();
+    await handleExport(
+      context,
+      exportAction: () => Exporter.exportList(
+        db: db,
+        storage: storage,
+        list: list,
+      ),
+      shareText: 'Pinpoint List: ${list.name}',
+      errorMessage: 'Failed to share list',
+    );
   }
 
   Future<void> _startEditing(EntryList list) async {
@@ -238,16 +254,22 @@ class _ManageListsPageState extends State<ManageListsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(Icons.delete_outlined,
+                            color: Colors.red),
                         onPressed: () => _deleteList(list),
-                        tooltip: 'Delete List',
+                        tooltip: 'Delete the list',
                       ),
-                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (buttonContext) => IconButton(
+                          tooltip: "Share the list",
+                          onPressed: () => _shareList(buttonContext, list),
+                          icon: const Icon(Icons.share_outlined),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       ReorderableDragStartListener(
                         index: index,
-                        child: Icon(Icons.drag_handle,
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant),
+                        child: const Icon(Icons.drag_handle),
                       ),
                     ],
                   ),

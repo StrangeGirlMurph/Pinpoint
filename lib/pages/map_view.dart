@@ -17,6 +17,7 @@ import 'package:pinpoint/data/settings.dart';
 import 'package:pinpoint/util/exif.dart';
 import 'package:pinpoint/util/links.dart';
 import 'package:pinpoint/util/location.dart';
+import 'package:pinpoint/util/location_service.dart';
 import 'package:pinpoint/util/snackbar.dart';
 import 'package:pinpoint/util/tile_layer.dart';
 import 'package:pinpoint/widgets/appbar.dart';
@@ -90,7 +91,8 @@ class _MapViewPageState extends State<MapViewPage> {
       },
     );
 
-    _isRotationLocked = _settings.get(Settings.lastMapRotationLocked) ?? false;
+    _isRotationLocked =
+        _settings.get(Settings.lastMapRotationLocked) as bool;
 
     _loadData();
   }
@@ -646,6 +648,7 @@ class _MapViewPageState extends State<MapViewPage> {
               ),
               if (isDefaultOsm)
                 IconButton(
+                  tooltip: "OpenStreetMap attribution",
                   icon: const Icon(Icons.info_outline),
                   onPressed: () {
                     showDialog(

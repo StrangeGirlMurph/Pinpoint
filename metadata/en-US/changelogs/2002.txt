@@ -8,4 +8,5 @@
 - Added support for map tile caching and caching settings.
 - Fix delay with adding an entry with a picture.
 - Cleaned up the UI
-- Some bug fixes :)
+- Added share functionality
+- Some bug fixes and code refactoring :)

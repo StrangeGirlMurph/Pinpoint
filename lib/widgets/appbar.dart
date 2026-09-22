@@ -28,6 +28,7 @@ class CoreAppbar extends StatelessWidget {
           Builder(
             builder: (context) {
               return IconButton(
+                tooltip: "Open the navigation drawer",
                 icon: Icon(Icons.menu),
                 onPressed: () {
                   Scaffold.of(context).openDrawer();

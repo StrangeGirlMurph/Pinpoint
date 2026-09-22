@@ -2,8 +2,77 @@ import 'dart:io';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:pinpoint/data/database.dart';
 import 'package:pinpoint/data/images.dart';
+import 'package:pinpoint/util/snackbar.dart';
+
+Future<void> handleImportFullBackup(BuildContext context) async {
+  final db = context.read<AppDatabase>();
+  final storage = context.read<ImageStorage>();
+  bool isLoadingShown = false;
+
+  try {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+    );
+
+    if (result.isEmpty || result.first.path == null) {
+      return;
+    }
+
+    final String zipPath = result.first.path!;
+
+    if (!context.mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import Backup'),
+        content: const Text(
+            'This will merge lists and entries from the backup with your current data. '
+            'Exact duplicates will be skipped. Do you want to proceed?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    if (!context.mounted) return;
+    isLoadingShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    );
+
+    await Importer.importFullBackupFromZip(zipPath, db, storage);
+
+    if (context.mounted) {
+      if (isLoadingShown) Navigator.of(context).pop();
+      showSnackBar(context, 'Import completed successfully.');
+    }
+  } catch (e) {
+    if (context.mounted) {
+      if (isLoadingShown) Navigator.of(context).pop();
+      showSnackBar(context, 'Failed to import backup: $e');
+    }
+  }
+}
 
 class Importer {
   static Future<void> importFullBackupFromZip(
