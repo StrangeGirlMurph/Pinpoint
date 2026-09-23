@@ -58,7 +58,7 @@ class HelpPage extends StatelessWidget {
               children: [
                 TextButton.icon(
                   onPressed: () => openURL(context,
-                      "https://github.com/StrangeGirlMurph/Urban-Mapping/issues"),
+                      "https://github.com/StrangeGirlMurph/Pinpoint/issues"),
                   icon: const Icon(Icons.bug_report_outlined),
                   label: const Text("GitHub Issues"),
                 ),
@@ -69,14 +69,14 @@ class HelpPage extends StatelessWidget {
                   label: const Text("E-Mail (work@murphy.science)"),
                 ),
                 TextButton.icon(
-                  onPressed: () => openURL(
-                      context, "https://matrix.to/#/@strangegirlmurph:matrix.org"),
+                  onPressed: () => openURL(context,
+                      "https://matrix.to/#/@strangegirlmurph:matrix.org"),
                   icon: const Icon(Icons.chat_bubble_outline),
                   label: const Text("Matrix (@strangegirlmurph)"),
                 ),
                 TextButton.icon(
-                  onPressed: () => openURL(
-                      context, "https://mastodon.social/@StrangeGirlMurph"),
+                  onPressed: () => openURL(context,
+                      "https://tootpick.org/#text=%5BPinpoint%5D%20(%40StrangeGirlMurph)"),
                   icon: const Icon(Symbols.communities),
                   label: const Text("Mastodon (@StrangeGirlMurph)"),
                 ),
