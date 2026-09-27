@@ -16,13 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Cache pub dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.pub-cache
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: ${{ runner.os }}-pub-
-
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
@@ -68,13 +61,18 @@ jobs:
 
       - name: Move normal APKs
         run: |
-          mkdir -p build/normal-apks
-          mv build/app/outputs/flutter-apk/*.apk build/normal-apks/
+          mkdir -p normal-apks
+          mv build/app/outputs/flutter-apk/*.apk normal-apks/
 
-      - name: Install FOSS dependencies
+      - name: Patch geolocator for FOSS build
         run: |
-          sed -i -e 's/^#f//' pubspec.yaml
-          flutter pub get
+          cd ~/.pub-cache/hosted/pub.dev/geolocator_android-*/android
+          sed -i -e '/gms/d' build.gradle
+          cd src/main/java/com/baseflow/geolocator/location
+          rm FusedLocationClient.java
+          sed -i -e '/if (forceAndroidLocationManager) {/,/^  }/c return new LocationManagerClient(context, locationOptions);}' -e '/isGooglePlayServicesAvailable/,/^  }/d' -e '/gms/d' GeolocationManager.java
+          cd $GITHUB_WORKSPACE/android
+          ./gradlew clean
 
       - name: Build FOSS APKs
         run: |
@@ -82,7 +80,7 @@ jobs:
           for file in build/app/outputs/flutter-apk/*.apk; do
             mv "$file" "${file/.apk/-foss.apk}"
           done
-          mv build/normal-apks/*.apk build/app/outputs/flutter-apk/
+          mv normal-apks/*.apk build/app/outputs/flutter-apk/
 
       - name: Rename builds
         run: |
