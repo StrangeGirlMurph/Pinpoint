@@ -1,12 +1,11 @@
-- Add support for image metadata usage.
-- Removed a tiny pin offset of map markers.
-- Added an option to let the app automatically check for updates on startup.
-- Added a setting to choose the startup page.
-- Updated dependencies and build system.
-- Major overhaul of the location service.
-- Added support for custom map tile providers.
-- Added support for map tile caching and caching settings.
-- Fix delay with adding an entry with a picture.
-- Cleaned up the UI
+- Support image metadata
+- Custom map tile providers & tile caching
+- Major location service overhaul
+- Removed tiny pin offset of map markers
+- Added option to check for updates on startup
+- Added setting to choose startup page
 - Added share functionality
-- Some bug fixes and code refactoring :)
+- Fixed delay with adding entries with pictures
+- Cleaned up the UI
+- Updated dependencies & build system
+- Bug fixes and code refactoring :)

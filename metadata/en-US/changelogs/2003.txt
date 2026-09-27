@@ -1,0 +1,11 @@
+- Support image metadata
+- Custom map tile providers & tile caching
+- Major location service overhaul
+- Fixed marker pin offset
+- Added update check on startup & startup page setting
+- Share functionality
+- Fixed delay when adding entries with pictures
+- Cleaned up UI
+- Fixed help page links
+- Fixed reproducible builds for F-Droid
+- Dependency updates, bug fixes & refactoring
